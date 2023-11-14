@@ -1,4 +1,4 @@
-branch="main"
+branch="deploy"
 url="https://api.github.com/repos/du1ana/ev-res-test/commits?sha=$branch"
 
 headers=$(curl -s -I -X GET "$url")
