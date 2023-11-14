@@ -19,12 +19,23 @@ max_non_ipv6_instances=5
 max_ipv6_prefix_len=112
 evernode_alias=/usr/bin/evernode
 log_dir=/tmp/evernode-beta
-cloud_storage="https://github.com/du1ana/ev-res-test/raw/main/installer/"
-setup_script_url="$cloud_storage/setup.sh"
-installer_url="$cloud_storage/installer.tar.gz"
-licence_url="$cloud_storage/licence.txt"
-nodejs_url="$cloud_storage/node"
-jshelper_url="$cloud_storage/setup-jshelper.tar.gz"
+
+#retrieve latest version
+cloud_storage="https://api.github.com/repos/du1ana/ev-res-test/releases"
+
+latest_version_data=$(curl -s "$cloud_storage/latest")
+
+latest_version=$(echo "$latest_version_data" | jq -r '.name')
+latest_version_timestamp=$(echo "$latest_version_data" | jq -r '.published_at')
+
+echo "Latest Version: $latest_version" #dulTest
+echo "Timestamp: $latest_version_timestamp" #dulTest
+
+setup_script_url="$cloud_storage/download/$latest_version/setup.sh"
+installer_url="$cloud_storage/download/$latest_version/installer.tar.gz"
+licence_url="$cloud_storage/download/$latest_version/licence.txt"
+nodejs_url="$cloud_storage/download/$latest_version/node"
+jshelper_url="$cloud_storage/download/$latest_version/setup-jshelper.tar.gz"
 installer_version_timestamp_file="installer.version.timestamp"
 setup_version_timestamp_file="setup.version.timestamp"
 default_rippled_server="wss://hooks-testnet-v3.xrpl-labs.com"
@@ -88,7 +99,7 @@ function confirm() {
 # Creating bin dir is the first stage of installation.
 # Removing bin dir is the last stage of uninstalltion.
 # So if the service does not exists but the bin dir exists, Previous installation or uninstalltion is failed partially.
-installed=false
+installed=false #make true when testing update
 [ -f /etc/systemd/system/$SASHIMONO_SERVICE.service ] && [ -d $SASHIMONO_BIN ] && installed=true
 
 if $installed ; then
@@ -710,8 +721,12 @@ function uninstall_failure() {
 }
 
 function online_version_timestamp() {
-    # Send HTTP HEAD request and get last modified timestamp of the installer package or setup.sh.
-    curl --silent --head $1 | grep 'Last-Modified:' | sed 's/[^ ]* //'
+    cloud_storage="https://api.github.com/repos/du1ana/ev-res-test/releases"
+
+    latest_version_data=$(curl -s "$cloud_storage/latest")
+
+    latest_version_timestamp=$(echo "$latest_version_data" | jq -r '.published_at')
+    echo "$latest_version_timestamp"
 }
 
 function install_evernode() {
