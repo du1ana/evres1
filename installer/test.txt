@@ -5,3 +5,8 @@ v0.3 (release)
 v0.4_t (tag)
 v0.5 (gh create release)
 v0.6 (using release_script.sh)
+...
+
+curl -fsSL https://github.com/du1ana/ev-res-test/releases/download/v0.9/setup.sh | cat | sudo NO_DOMAIN=1 SKIP_SYSREQ=1 bash -s install -i
+
+sudo NO_DOMAIN=1 SKIP_SYSREQ=1 ./setup.sh install -i
