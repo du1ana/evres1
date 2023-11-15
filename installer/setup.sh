@@ -20,22 +20,21 @@ max_ipv6_prefix_len=112
 evernode_alias=/usr/bin/evernode
 log_dir=/tmp/evernode-beta
 
-#retrieve latest version
-cloud_storage="https://api.github.com/repos/du1ana/ev-res-test/releases"
+cloud_storage="https://github.com/du1ana/ev-res-test/releases/download"
+latest_version_endpoint="https://api.github.com/repos/du1ana/ev-res-test/releases/latest"
 
-latest_version_data=$(curl -s "$cloud_storage/latest")
+latest_version_data=$(curl -s "$latest_version_endpoint")
 
 latest_version=$(echo "$latest_version_data" | jq -r '.name')
-latest_version_timestamp=$(echo "$latest_version_data" | jq -r '.published_at')
-
-echo "Latest Version: $latest_version" #dulTest
-echo "Timestamp: $latest_version_timestamp" #dulTest
-
-setup_script_url="$cloud_storage/download/$latest_version/setup.sh"
-installer_url="$cloud_storage/download/$latest_version/installer.tar.gz"
-licence_url="$cloud_storage/download/$latest_version/licence.txt"
-nodejs_url="$cloud_storage/download/$latest_version/node"
-jshelper_url="$cloud_storage/download/$latest_version/setup-jshelper.tar.gz"
+if [ -z "$latest_version" ]|| [ "$latest_version" = "null" ]; then
+    echo "Failed to retrieve latest version data."
+    exit 1
+fi
+setup_script_url="$cloud_storage/$latest_version/setup.sh"
+installer_url="$cloud_storage/$latest_version/installer.tar.gz"
+licence_url="$cloud_storage/$latest_version/licence.txt"
+nodejs_url="$cloud_storage/$latest_version/node"
+jshelper_url="$cloud_storage/$latest_version/setup-jshelper.tar.gz"
 installer_version_timestamp_file="installer.version.timestamp"
 default_rippled_server="wss://hooks-testnet-v3.xrpl-labs.com"
 setup_helper_dir="/tmp/evernode-setup-helpers"
@@ -60,7 +59,7 @@ export CG_SUFFIX="-cg"
 export EVERNODE_AUTO_UPDATE_SERVICE="evernode-auto-update"
 
 # TODO: Verify if the correct Governor address is present in the DEV/BETA envs.
-export EVERNODE_GOVERNOR_ADDRESS="raVhw4Q8FQr296jdaDLDfZ4JDhh7tFG7SF"
+export EVERNODE_GOVERNOR_ADDRESS="rGVHr1PrfL93UAjyw3DWZoi9adz2sLp2yL"
 export MIN_EVR_BALANCE=5120
 
 # Private docker registry (not used for now)
@@ -98,7 +97,7 @@ function confirm() {
 # Creating bin dir is the first stage of installation.
 # Removing bin dir is the last stage of uninstalltion.
 # So if the service does not exists but the bin dir exists, Previous installation or uninstalltion is failed partially.
-installed=false #make true when testing update
+installed=true #make true when testing update. otherwise leave false
 [ -f /etc/systemd/system/$SASHIMONO_SERVICE.service ] && [ -d $SASHIMONO_BIN ] && installed=true
 
 if $installed ; then
@@ -235,13 +234,13 @@ function init_setup_helpers() {
     rm -r $jshelper_dir >/dev/null 2>&1
     sudo -u $noroot_user mkdir -p $jshelper_dir
 
-    [ ! -f "$nodejs_util_bin" ] && sudo -u $noroot_user curl $nodejs_url --output $nodejs_util_bin
+    [ ! -f "$nodejs_util_bin" ] && sudo -u $noroot_user curl -L $nodejs_url --output $nodejs_util_bin
     [ ! -f "$nodejs_util_bin" ] && echo "Could not download nodejs for setup checks." && exit 1
     chmod +x $nodejs_util_bin
 
     if [ ! -f "$jshelper_bin" ]; then
         pushd $jshelper_dir >/dev/null 2>&1
-        sudo -u $noroot_user curl $jshelper_url --output jshelper.tar.gz
+        sudo -u $noroot_user curl -L $jshelper_url --output jshelper.tar.gz
         sudo -u $noroot_user tar zxf jshelper.tar.gz --strip-components=1
         rm jshelper.tar.gz
         popd >/dev/null 2>&1
@@ -720,7 +719,7 @@ function uninstall_failure() {
 }
 
 function online_version_timestamp() {
-    latest_version_data=$(curl -s "$cloud_storage/latest")
+    latest_version_data=$(curl -s "$latest_version_endpoint")
     latest_version_timestamp=$(echo "$latest_version_data" | jq -r '.published_at')
     echo "$latest_version_timestamp"
 }
@@ -731,12 +730,10 @@ function install_evernode() {
     # Get installer version (timestamp). We use this later to check for Evernode software updates.
     local installer_version_timestamp=$(online_version_timestamp)
     [ -z "$installer_version_timestamp" ] && echo "Online installer not found." && exit 1
-    # Get setup version (timestamp).
-    local setup_version_timestamp=$(online_version_timestamp)
 
     local tmp=$(mktemp -d)
     cd $tmp
-    curl --silent $installer_url --output installer.tgz
+    curl --silent -L $installer_url --output installer.tgz
     tar zxf $tmp/installer.tgz --strip-components=1
     rm installer.tgz
 
@@ -819,12 +816,10 @@ function uninstall_evernode() {
 function update_evernode() {
     echo "Checking for updates..."
     local latest_installer_script_version=$(online_version_timestamp)
-    local latest_setup_script_version=$(online_version_timestamp)
     [ -z "$latest_installer_script_version" ] && echo "Could not check for updates. Online installer not found." && exit 1
 
     local current_installer_script_version=$(cat $SASHIMONO_DATA/$installer_version_timestamp_file)
-    local current_setup_script_version=$(cat $SASHIMONO_DATA/$setup_version_timestamp_file)
-    [ "$latest_installer_script_version" == "$current_installer_script_version" ] && [ "$latest_setup_script_version" == "$current_setup_script_version" ] && echo "Your $evernode installation is up to date." && exit 0
+    [ "$latest_installer_script_version" == "$current_installer_script_version" ] && echo "Your $evernode installation is up to date." && exit 0
 
     echo "New $evernode update available. Setup will re-install $evernode with updated software. Your account and contract instances will be preserved."
     $interactive && ! confirm "\nDo you want to install the update?" && exit 1
@@ -1286,7 +1281,7 @@ if [ "$mode" == "install" ]; then
 
     # Display licence file and ask for concent.
     printf "\n*****************************************************************************************************\n\n"
-    curl --silent $licence_url | cat
+    curl -s -L $licence_url | cat
     printf "\n\n*****************************************************************************************************\n"
     $interactive && ! confirm "\nDo you accept the terms of the licence agreement?" && exit 1
 
