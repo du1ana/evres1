@@ -731,6 +731,8 @@ function install_evernode() {
     # Get installer version (timestamp). We use this later to check for Evernode software updates.
     local installer_version_timestamp=$(online_version_timestamp)
     [ -z "$installer_version_timestamp" ] && echo "Online installer not found." && exit 1
+    # Get setup version (timestamp).
+    local setup_version_timestamp=$(online_version_timestamp)
 
     local tmp=$(mktemp -d)
     cd $tmp
@@ -817,10 +819,12 @@ function uninstall_evernode() {
 function update_evernode() {
     echo "Checking for updates..."
     local latest_installer_script_version=$(online_version_timestamp)
+    local latest_setup_script_version=$(online_version_timestamp)
     [ -z "$latest_installer_script_version" ] && echo "Could not check for updates. Online installer not found." && exit 1
 
     local current_installer_script_version=$(cat $SASHIMONO_DATA/$installer_version_timestamp_file)
-    [ "$latest_installer_script_version" == "$current_installer_script_version" ] && echo "Your $evernode installation is up to date." && exit 0
+    local current_setup_script_version=$(cat $SASHIMONO_DATA/$setup_version_timestamp_file)
+    [ "$latest_installer_script_version" == "$current_installer_script_version" ] && [ "$latest_setup_script_version" == "$current_setup_script_version" ] && echo "Your $evernode installation is up to date." && exit 0
 
     echo "New $evernode update available. Setup will re-install $evernode with updated software. Your account and contract instances will be preserved."
     $interactive && ! confirm "\nDo you want to install the update?" && exit 1
