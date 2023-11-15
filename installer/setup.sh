@@ -97,7 +97,7 @@ function confirm() {
 # Creating bin dir is the first stage of installation.
 # Removing bin dir is the last stage of uninstalltion.
 # So if the service does not exists but the bin dir exists, Previous installation or uninstalltion is failed partially.
-installed=true #make true when testing update. otherwise leave false
+installed=true #dulTest make true when testing update. otherwise leave false
 [ -f /etc/systemd/system/$SASHIMONO_SERVICE.service ] && [ -d $SASHIMONO_BIN ] && installed=true
 
 if $installed ; then
