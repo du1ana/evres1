@@ -61,7 +61,7 @@ export CG_SUFFIX="-cg"
 export EVERNODE_AUTO_UPDATE_SERVICE="evernode-auto-update"
 
 # TODO: Verify if the correct Governor address is present in the DEV/BETA envs.
-export EVERNODE_GOVERNOR_ADDRESS="raVhw4Q8FQr296jdaDLDfZ4JDhh7tFG7SF"
+export EVERNODE_GOVERNOR_ADDRESS="rGVHr1PrfL93UAjyw3DWZoi9adz2sLp2yL"
 export MIN_EVR_BALANCE=5120
 
 # Private docker registry (not used for now)
