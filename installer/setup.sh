@@ -20,16 +20,18 @@ max_ipv6_prefix_len=112
 evernode_alias=/usr/bin/evernode
 log_dir=/tmp/evernode-beta
 
+# cloud_storage="https://github.com/EvernodeXRPL/evernode-resources/releases/download"
+# latest_version_endpoint="https://api.github.com/repos/EvernodeXRPL/evernode-resources/releases/latest"
 cloud_storage="https://github.com/du1ana/ev-res-test/releases/download"
 latest_version_endpoint="https://api.github.com/repos/du1ana/ev-res-test/releases/latest"
 
 latest_version_data=$(curl -s "$latest_version_endpoint")
-
 latest_version=$(echo "$latest_version_data" | jq -r '.name')
 if [ -z "$latest_version" ]|| [ "$latest_version" = "null" ]; then
     echo "Failed to retrieve latest version data."
     exit 1
 fi
+
 setup_script_url="$cloud_storage/$latest_version/setup.sh"
 installer_url="$cloud_storage/$latest_version/installer.tar.gz"
 licence_url="$cloud_storage/$latest_version/licence.txt"
@@ -59,7 +61,7 @@ export CG_SUFFIX="-cg"
 export EVERNODE_AUTO_UPDATE_SERVICE="evernode-auto-update"
 
 # TODO: Verify if the correct Governor address is present in the DEV/BETA envs.
-export EVERNODE_GOVERNOR_ADDRESS="rGVHr1PrfL93UAjyw3DWZoi9adz2sLp2yL"
+export EVERNODE_GOVERNOR_ADDRESS="raVhw4Q8FQr296jdaDLDfZ4JDhh7tFG7SF"
 export MIN_EVR_BALANCE=5120
 
 # Private docker registry (not used for now)
@@ -77,12 +79,20 @@ function echomult() {
 }
 
 function confirm() {
-    echo -en $1" [Y/n] "
+    local prompt=$1
+    local defaultChoice=${2:-y}  #Default choice is set to 'y' if $2 parameter is not provided.
+
+    local choiceDisplay="[Y/n]"
+    if [ "$defaultChoice" == "n" ]; then
+        choiceDisplay="[y/N]"
+    fi
+    
+    echo -en "$prompt $choiceDisplay "
     local yn=""
     read yn </dev/tty
 
     # Default choice is 'y'
-    [ -z $yn ] && yn="y"
+    [ -z $yn ] && yn="$defaultChoice"
     while ! [[ $yn =~ ^[Yy|Nn]$ ]]; do
         read -p "'y' or 'n' expected: " yn </dev/tty
     done
@@ -97,7 +107,7 @@ function confirm() {
 # Creating bin dir is the first stage of installation.
 # Removing bin dir is the last stage of uninstalltion.
 # So if the service does not exists but the bin dir exists, Previous installation or uninstalltion is failed partially.
-installed=false #dulTest make true when testing update. otherwise leave false
+installed=false
 [ -f /etc/systemd/system/$SASHIMONO_SERVICE.service ] && [ -d $SASHIMONO_BIN ] && installed=true
 
 if $installed ; then
@@ -654,6 +664,15 @@ function set_rippled_server() {
     fi
 }
 
+function set_auto_update() {
+    enable_auto_update=false
+    if $interactive; then
+        if confirm "Do you want to enable auto updates?" "n" ; then
+            enable_auto_update=true
+        fi
+    fi
+}
+
 function set_transferee_address() {
     # Here we set the default transferee address as 'CURRENT_HOST_ADDRESS', but we set it to the exact current host address in host client side.
     [ -z $transferee_address ] && transferee_address=''
@@ -764,7 +783,7 @@ function install_evernode() {
     # If STAGE log contains -p arg, move the cursor to previous log line and overwrite the log.
     ! UPGRADE=$upgrade EVERNODE_REGISTRY_ADDRESS=$registry_address ./sashimono-install.sh $inetaddr $init_peer_port $init_user_port $countrycode $alloc_instcount \
                             $alloc_cpu $alloc_ramKB $alloc_swapKB $alloc_diskKB $lease_amount $rippled_server $xrpl_account_address $xrpl_account_secret $email_address \
-                            $tls_key_file $tls_cert_file $tls_cabundle_file $description $ipv6_subnet $ipv6_net_interface 2>&1 \
+                            $tls_key_file $tls_cert_file $tls_cabundle_file $description $ipv6_subnet $ipv6_net_interface $enable_auto_update 2>&1 \
                             | tee -a $logfile | stdbuf --output=L grep "STAGE\|ERROR" \
                             | while read line ; do [[ $line =~ ^STAGE[[:space:]]-p(.*)$ ]] && echo -e \\e[1A\\e[K"${line:9}" || echo ${line:6} ; done \
                             && remove_evernode_alias && install_failure
@@ -1267,6 +1286,7 @@ if [ "$mode" == "install" ]; then
         tls_cabundle_file=${19}    # File path to the tls ca bundle.
         ipv6_subnet=${20}          # ipv6 subnet to be used for ipv6 instance address assignment.
         ipv6_net_interface=${21}   # ipv6 bound network interface to be used for outbound communication.
+        enable_auto_update=${22}   # Enable auto updates flag
     fi
 
     $interactive && ! confirm "This will install Sashimono, Evernode's contract instance management software,
@@ -1318,6 +1338,13 @@ if [ "$mode" == "install" ]; then
     if [ "$NO_MB" == "" ]; then
         set_lease_amount
         echo -e "Lease amount set as $lease_amount EVRs per Moment.\n"
+    fi
+
+    set_auto_update
+    if [ "$enable_auto_update" = true ]; then
+        echo -e "Auto updater will be enabled."
+    else
+        echo -e "Auto updater will be disabled."
     fi
 
     $interactive && ! confirm "\n\nSetup will now begin the installation. Continue?" && exit 1
