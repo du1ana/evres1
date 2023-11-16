@@ -61,7 +61,7 @@ export CG_SUFFIX="-cg"
 export EVERNODE_AUTO_UPDATE_SERVICE="evernode-auto-update"
 
 # TODO: Verify if the correct Governor address is present in the DEV/BETA envs.
-export EVERNODE_GOVERNOR_ADDRESS="rGVHr1PrfL93UAjyw3DWZoi9adz2sLp2yL"
+export EVERNODE_GOVERNOR_ADDRESS="raVhw4Q8FQr296jdaDLDfZ4JDhh7tFG7SF"
 export MIN_EVR_BALANCE=5120
 
 # Private docker registry (not used for now)
@@ -743,6 +743,48 @@ function online_version_timestamp() {
     echo "$latest_version_timestamp"
 }
 
+function enable_evernode_auto_updater() {
+    # Create the service.
+    echo "[Unit]
+Description=Service for the Evernode auto-update.
+After=network.target
+[Service]
+User=root
+Group=root
+Type=oneshot
+ExecStart=/usr/bin/evernode update -q
+[Install]
+WantedBy=multi-user.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.service
+
+    # Create a timer for the service (every two hours).
+    echo "[Unit]
+Description=Timer for the Evernode auto-update.
+# Allow manual starts
+RefuseManualStart=no
+# Allow manual stops
+RefuseManualStop=no
+[Timer]
+Unit=$EVERNODE_AUTO_UPDATE_SERVICE.service
+OnCalendar=0/12:00:00
+# Execute job if it missed a run due to machine being off
+Persistent=true
+# To prevent rush time, adding 2 hours delay
+RandomizedDelaySec=7200
+[Install]
+WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
+
+    # Reload the systemd daemon.
+    systemctl daemon-reload
+
+    echo "Enabling Evernode auto update service..."
+    systemctl enable $EVERNODE_AUTO_UPDATE_SERVICE.service
+
+    echo "Enabling Evernode auto update timer..."
+    systemctl enable $EVERNODE_AUTO_UPDATE_SERVICE.timer
+    echo "Starting Evernode auto update timer..."
+    systemctl start $EVERNODE_AUTO_UPDATE_SERVICE.timer
+}
+
 function install_evernode() {
     local upgrade=$1
 
@@ -783,10 +825,20 @@ function install_evernode() {
     # If STAGE log contains -p arg, move the cursor to previous log line and overwrite the log.
     ! UPGRADE=$upgrade EVERNODE_REGISTRY_ADDRESS=$registry_address ./sashimono-install.sh $inetaddr $init_peer_port $init_user_port $countrycode $alloc_instcount \
                             $alloc_cpu $alloc_ramKB $alloc_swapKB $alloc_diskKB $lease_amount $rippled_server $xrpl_account_address $xrpl_account_secret $email_address \
-                            $tls_key_file $tls_cert_file $tls_cabundle_file $description $ipv6_subnet $ipv6_net_interface $enable_auto_update 2>&1 \
+                            $tls_key_file $tls_cert_file $tls_cabundle_file $description $ipv6_subnet $ipv6_net_interface 2>&1 \
                             | tee -a $logfile | stdbuf --output=L grep "STAGE\|ERROR" \
                             | while read line ; do [[ $line =~ ^STAGE[[:space:]]-p(.*)$ ]] && echo -e \\e[1A\\e[K"${line:9}" || echo ${line:6} ; done \
                             && remove_evernode_alias && install_failure
+    
+    # Enable the Evernode Auto Updater Service.
+    if [ "$enable_auto_update" = true ]; then
+        stage "Configuring auto updater service"
+        echo -e "Setup.sh: enabling auto updater.. #dulTest"
+        enable_evernode_auto_updater
+    else
+        echo -e "Setup.sh: enable_auto_update flag is false. Not enabling auto updater. #dulTest"
+    fi
+
     set +o pipefail
 
     rm -r $tmp
