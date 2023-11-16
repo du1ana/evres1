@@ -61,7 +61,7 @@ export CG_SUFFIX="-cg"
 export EVERNODE_AUTO_UPDATE_SERVICE="evernode-auto-update"
 
 # TODO: Verify if the correct Governor address is present in the DEV/BETA envs.
-export EVERNODE_GOVERNOR_ADDRESS="rGVHr1PrfL93UAjyw3DWZoi9adz2sLp2yL"
+export EVERNODE_GOVERNOR_ADDRESS="rGVHr1PrfL93UAjyw3DWZoi9adz2sLp2yL" #dulTest
 export MIN_EVR_BALANCE=5120
 
 # Private docker registry (not used for now)
@@ -785,6 +785,24 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
     systemctl start $EVERNODE_AUTO_UPDATE_SERVICE.timer
 }
 
+function remove_evernode_auto_updater() {
+
+    echo "Removing Evernode auto update timer..."
+    systemctl stop $EVERNODE_AUTO_UPDATE_SERVICE.timer
+    systemctl disable $EVERNODE_AUTO_UPDATE_SERVICE.timer
+    service_path="/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer"
+    rm -f $service_path
+
+    echo "Removing Evernode auto update service..."
+    systemctl stop $EVERNODE_AUTO_UPDATE_SERVICE.service
+    systemctl disable $EVERNODE_AUTO_UPDATE_SERVICE.service
+    service_path="/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.service"
+    rm -f $service_path
+
+    # Reload the systemd daemon.
+    systemctl daemon-reload
+}
+
 function install_evernode() {
     local upgrade=$1
 
@@ -874,6 +892,9 @@ function uninstall_evernode() {
     if ! $transfer ; then
         [ "$upgrade" == "0" ] && echo "Uninstalling..." ||  echo "Uninstalling for upgrade..."
         ! UPGRADE=$upgrade TRANSFER=0 $SASHIMONO_BIN/sashimono-uninstall.sh $2 && uninstall_failure
+        
+        # Remove the Evernode Auto Updater Service.
+        [ "$upgrade" == "0" ] && remove_evernode_auto_updater
     else
         echo "Intiating Transfer..."
         echo "Uninstalling for transfer..."
