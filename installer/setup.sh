@@ -115,7 +115,7 @@ if $installed ; then
         && echo "$evernode is already installed on your host. Use the 'evernode' command to manage your host." \
         && exit 1
 
-    [ "$1" != "uninstall" ] && [ "$1" != "status" ] && [ "$1" != "list" ] && [ "$1" != "update" ] && [ "$1" != "log" ] && [ "$1" != "applyssl" ] && [ "$1" != "transfer" ] && [ "$1" != "config" ] &&  [ "$1" != "delete" ] &&  [ "$1" != "governance" ] \
+    [ "$1" != "uninstall" ] && [ "$1" != "status" ] && [ "$1" != "list" ] && [ "$1" != "update" ] && [ "$1" != "log" ] && [ "$1" != "applyssl" ] && [ "$1" != "transfer" ] && [ "$1" != "config" ] &&  [ "$1" != "delete" ] &&  [ "$1" != "governance" ] &&  [ "$1" != "autoupdater" ] \
         && echomult "$evernode host management tool
                 \nYour host is registered on $evernode.
                 \nSupported commands:
@@ -128,7 +128,8 @@ if $installed ; then
                 \ntransfer - Initiate an $evernode transfer for your machine
                 \ndelete - Remove an instance from the system and recreate the lease
                 \nuninstall - Uninstall and deregister from $evernode
-                \ngovernance - Governance candidate management" \
+                \ngovernance - Governance candidate management
+                \nautoupdater - Evernode Auto Updater management" \
         && exit 1
 elif [ -d $SASHIMONO_BIN ] ; then
     [ "$1" != "install" ] && [ "$1" != "uninstall" ] \
@@ -744,6 +745,9 @@ function online_version_timestamp() {
 }
 
 function enable_evernode_auto_updater() {
+    [ "$EUID" -ne 0 ] && echo "Please run with root privileges (sudo)." && exit 1
+    enable_auto_update=true
+
     # Create the service.
     echo "[Unit]
 Description=Service for the Evernode auto-update.
@@ -786,6 +790,8 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 }
 
 function remove_evernode_auto_updater() {
+    [ "$EUID" -ne 0 ] && echo "Please run with root privileges (sudo)." && exit 1
+    enable_auto_update=false
 
     echo "Removing Evernode auto update timer..."
     systemctl stop $EVERNODE_AUTO_UPDATE_SERVICE.timer
@@ -851,10 +857,7 @@ function install_evernode() {
     # Enable the Evernode Auto Updater Service.
     if [ "$enable_auto_update" = true ]; then
         stage "Configuring auto updater service"
-        echo -e "Setup.sh: enabling auto updater.. #dulTest"
         enable_evernode_auto_updater
-    else
-        echo -e "Setup.sh: enable_auto_update flag is false. Not enabling auto updater. #dulTest"
     fi
 
     set +o pipefail
@@ -1359,7 +1362,7 @@ if [ "$mode" == "install" ]; then
         tls_cabundle_file=${19}    # File path to the tls ca bundle.
         ipv6_subnet=${20}          # ipv6 subnet to be used for ipv6 instance address assignment.
         ipv6_net_interface=${21}   # ipv6 bound network interface to be used for outbound communication.
-        enable_auto_update=${22}   # Enable auto updates flag
+        enable_auto_update=${22}   # Enable auto updates flag.
     fi
 
     $interactive && ! confirm "This will install Sashimono, Evernode's contract instance management software,
@@ -1536,6 +1539,17 @@ elif [ "$mode" == "governance" ]; then
             \nhelp - Print help." && exit 0
     ! MB_DATA_DIR=$MB_XRPL_DATA node $MB_XRPL_BIN ${*:1} && exit 1
 
+elif [ "$mode" == "autoupdater" ]; then
+    if [ "$2" == "enable" ]; then
+        enable_evernode_auto_updater && exit 0
+    elif [ "$2" == "disable" ]; then
+        remove_evernode_auto_updater && exit 0
+    else
+        echomult "$evernode auto updater
+            \nSupported commands:
+            \nenable - Enable $evernode auto updater service.
+            \ndisable - Disable $evernode auto updater service." && exit 1
+    fi
 fi
 
 [ "$mode" != "uninstall" ] && check_installer_pending_finish
