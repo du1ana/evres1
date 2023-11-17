@@ -769,11 +769,11 @@ RefuseManualStart=no
 RefuseManualStop=no
 [Timer]
 Unit=$EVERNODE_AUTO_UPDATE_SERVICE.service
-OnCalendar=0/12:00:00
+OnCalendar=*:0/5
 # Execute job if it missed a run due to machine being off
 Persistent=true
 # To prevent rush time, adding 2 hours delay
-RandomizedDelaySec=7200
+RandomizedDelaySec=120
 [Install]
 WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
