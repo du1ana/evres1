@@ -42,6 +42,7 @@ default_rippled_server="wss://hooks-testnet-v3.xrpl-labs.com"
 setup_helper_dir="/tmp/evernode-setup-helpers"
 nodejs_util_bin="$setup_helper_dir/node"
 jshelper_bin="$setup_helper_dir/jshelper/index.js"
+checkpoint_file="checkpoint.json"
 
 # export vars used by Sashimono installer.
 export USER_BIN=/usr/bin
@@ -61,7 +62,7 @@ export CG_SUFFIX="-cg"
 export EVERNODE_AUTO_UPDATE_SERVICE="evernode-auto-update"
 
 # TODO: Verify if the correct Governor address is present in the DEV/BETA envs.
-export EVERNODE_GOVERNOR_ADDRESS="rGVHr1PrfL93UAjyw3DWZoi9adz2sLp2yL" #dulTest
+export EVERNODE_GOVERNOR_ADDRESS="rGVHr1PrfL93UAjyw3DWZoi9adz2sLp2yL"
 export MIN_EVR_BALANCE=5120
 
 # Private docker registry (not used for now)
@@ -769,11 +770,11 @@ RefuseManualStart=no
 RefuseManualStop=no
 [Timer]
 Unit=$EVERNODE_AUTO_UPDATE_SERVICE.service
-OnCalendar=*:0/5
+OnCalendar=0/12:00:00
 # Execute job if it missed a run due to machine being off
 Persistent=true
 # To prevent rush time, adding 2 hours delay
-RandomizedDelaySec=120
+RandomizedDelaySec=7200
 [Install]
 WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
@@ -1398,6 +1399,14 @@ if [ "$mode" == "install" ]; then
 
     set_country_code
     echo -e "Using '$countrycode' as country code.\n"
+
+    exec_jshelper checkpoint-save $checkpoint_file'{"rippled_server":"'$rippled_server'", "xrpl_account_address":"'$xrpl_account_address'", , "xrpl_account_address":"'$xrpl_account_address'",
+    , "email_address":"'$email_address'", "inetaddr":"'$inetaddr'", "countrycode":"'$countrycode'"}'
+
+    local checkpoinhted_server=$(exec_jshelper checkpoint-load $checkpoint_file "rippled_server")
+    local checkpoinhted_countrycode=$(exec_jshelper checkpoint-load $checkpoint_file "countrycode")
+    echo -e "Checkpointed server: $checkpoinhted_server.\n"
+    echo -e "Checkpointed countrycode: $checkpoinhted_countrycode.\n"
 
     set_ipv6_subnet
     [ "$ipv6_subnet" != "-" ] && [ "$ipv6_net_interface" != "-" ] && echo -e "Using $ipv6_subnet IPv6 subnet on $ipv6_net_interface for contract instances.\n"
