@@ -8,4 +8,4 @@ fi
 tag_version="sashi_$1"
 release_note="$2"
 
-gh release create "$tag_version" ./installer/* -t "$tag_version" -n "$release_note" -p
+gh release create "$tag_version" ./installer/* -t "$tag_version" -n "$release_note" -p --target "deploy"
