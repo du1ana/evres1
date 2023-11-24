@@ -20,11 +20,8 @@ max_ipv6_prefix_len=112
 evernode_alias=/usr/bin/evernode
 log_dir=/tmp/evernode-beta
 
-# cloud_storage="https://github.com/EvernodeXRPL/evernode-resources/releases/download"
-# latest_version_endpoint="https://api.github.com/repos/EvernodeXRPL/evernode-resources/releases/latest"
-cloud_storage="https://github.com/du1ana/ev-res-test/releases/download"
+latest_version_endpoint="https://api.github.com/repos/EvernodeXRPL/evernode-resources/releases/latest"
 latest_version_endpoint="https://api.github.com/repos/du1ana/ev-res-test/releases/latest"
-
 latest_version_data=$(curl -s "$latest_version_endpoint")
 latest_version=$(echo "$latest_version_data" | jq -r '.name')
 if [ -z "$latest_version" ]|| [ "$latest_version" = "null" ]; then
@@ -32,17 +29,18 @@ if [ -z "$latest_version" ]|| [ "$latest_version" = "null" ]; then
     exit 1
 fi
 
-setup_script_url="$cloud_storage/$latest_version/setup.sh"
-installer_url="$cloud_storage/$latest_version/installer.tar.gz"
-licence_url="$cloud_storage/$latest_version/licence.txt"
-nodejs_url="$cloud_storage/$latest_version/node"
-jshelper_url="$cloud_storage/$latest_version/setup-jshelper.tar.gz"
+cloud_storage="https://github.com/EvernodeXRPL/evernode-resources/releases/download/$latest_version"
+cloud_storage="https://github.com/du1ana/ev-res-test/releases/download/$latest_version"
+setup_script_url="$cloud_storage/setup.sh"
+installer_url="$cloud_storage/installer.tar.gz"
+licence_url="$cloud_storage/licence.txt"
+nodejs_url="$cloud_storage/node"
+jshelper_url="$cloud_storage/setup-jshelper.tar.gz"
 installer_version_timestamp_file="installer.version.timestamp"
 default_rippled_server="wss://hooks-testnet-v3.xrpl-labs.com"
 setup_helper_dir="/tmp/evernode-setup-helpers"
 nodejs_util_bin="$setup_helper_dir/node"
 jshelper_bin="$setup_helper_dir/jshelper/index.js"
-checkpoint_file="checkpoint.json"
 
 # export vars used by Sashimono installer.
 export USER_BIN=/usr/bin
@@ -62,7 +60,7 @@ export CG_SUFFIX="-cg"
 export EVERNODE_AUTO_UPDATE_SERVICE="evernode-auto-update"
 
 # TODO: Verify if the correct Governor address is present in the DEV/BETA envs.
-export EVERNODE_GOVERNOR_ADDRESS="rGVHr1PrfL93UAjyw3DWZoi9adz2sLp2yL"
+export EVERNODE_GOVERNOR_ADDRESS="raVhw4Q8FQr296jdaDLDfZ4JDhh7tFG7SF"
 export MIN_EVR_BALANCE=5120
 
 # Private docker registry (not used for now)
@@ -116,7 +114,7 @@ if $installed ; then
         && echo "$evernode is already installed on your host. Use the 'evernode' command to manage your host." \
         && exit 1
 
-    [ "$1" != "uninstall" ] && [ "$1" != "status" ] && [ "$1" != "list" ] && [ "$1" != "update" ] && [ "$1" != "log" ] && [ "$1" != "applyssl" ] && [ "$1" != "transfer" ] && [ "$1" != "config" ] &&  [ "$1" != "delete" ] &&  [ "$1" != "governance" ] &&  [ "$1" != "autoupdater" ] \
+    [ "$1" != "uninstall" ] && [ "$1" != "status" ] && [ "$1" != "list" ] && [ "$1" != "update" ] && [ "$1" != "log" ] && [ "$1" != "applyssl" ] && [ "$1" != "transfer" ] && [ "$1" != "config" ] &&  [ "$1" != "delete" ] &&  [ "$1" != "governance" ] &&  [ "$1" != "auto-update" ] &&  [ "$1" != "regular-key" ] \
         && echomult "$evernode host management tool
                 \nYour host is registered on $evernode.
                 \nSupported commands:
@@ -130,7 +128,8 @@ if $installed ; then
                 \ndelete - Remove an instance from the system and recreate the lease
                 \nuninstall - Uninstall and deregister from $evernode
                 \ngovernance - Governance candidate management
-                \nautoupdater - Evernode Auto Updater management" \
+                \nauto-update - Evernode Auto Updater management
+                \nregular-key - Set regular key" \
         && exit 1
 elif [ -d $SASHIMONO_BIN ] ; then
     [ "$1" != "install" ] && [ "$1" != "uninstall" ] \
@@ -673,6 +672,23 @@ function set_auto_update() {
             enable_auto_update=true
         fi
     fi
+}
+
+function set_regular_key() {
+    [ "$EUID" -ne 0 ] && echo "Please run with root privileges (sudo)." && exit 1
+
+    echo "Setting regular key..."
+    local mbconfig="$MB_XRPL_DATA/mb-xrpl.cfg"
+    local cfg_rippled_server=$(jq -r '.xrpl.rippledServer' $mbconfig)
+    local cfg_host_address=$(jq -r '.xrpl.address' $mbconfig)
+
+    local mbsecretconfig="$MB_XRPL_DATA/secret.cfg"
+    local cfg_host_secret=$(jq -r '.xrpl.secret' $mbsecretconfig)
+    echo "rippled server: $cfg_rippled_server"
+    echo "host addr: $cfg_host_address"
+    echo "host secret: $cfg_host_secret"
+    ! exec_jshelper set-regular-key $cfg_rippled_server $cfg_host_address $cfg_host_secret $1 $2 $3 && echo "Could not set reg key (dulTest)." && return 1
+    return 0
 }
 
 function set_transferee_address() {
@@ -1400,14 +1416,6 @@ if [ "$mode" == "install" ]; then
     set_country_code
     echo -e "Using '$countrycode' as country code.\n"
 
-    exec_jshelper checkpoint-save $checkpoint_file'{"rippled_server":"'$rippled_server'", "xrpl_account_address":"'$xrpl_account_address'", , "xrpl_account_address":"'$xrpl_account_address'",
-    , "email_address":"'$email_address'", "inetaddr":"'$inetaddr'", "countrycode":"'$countrycode'"}'
-
-    local checkpoinhted_server=$(exec_jshelper checkpoint-load $checkpoint_file "rippled_server")
-    local checkpoinhted_countrycode=$(exec_jshelper checkpoint-load $checkpoint_file "countrycode")
-    echo -e "Checkpointed server: $checkpoinhted_server.\n"
-    echo -e "Checkpointed countrycode: $checkpoinhted_countrycode.\n"
-
     set_ipv6_subnet
     [ "$ipv6_subnet" != "-" ] && [ "$ipv6_net_interface" != "-" ] && echo -e "Using $ipv6_subnet IPv6 subnet on $ipv6_net_interface for contract instances.\n"
 
@@ -1548,17 +1556,26 @@ elif [ "$mode" == "governance" ]; then
             \nhelp - Print help." && exit 0
     ! MB_DATA_DIR=$MB_XRPL_DATA node $MB_XRPL_BIN ${*:1} && exit 1
 
-elif [ "$mode" == "autoupdater" ]; then
+elif [ "$mode" == "auto-update" ]; then
     if [ "$2" == "enable" ]; then
         enable_evernode_auto_updater && exit 0
     elif [ "$2" == "disable" ]; then
         remove_evernode_auto_updater && exit 0
     else
-        echomult "$evernode auto updater
+        echomult "$evernode auto update
             \nSupported commands:
             \nenable - Enable $evernode auto updater service.
             \ndisable - Disable $evernode auto updater service." && exit 1
     fi
+
+elif [ "$mode" == "regular-key" ]; then
+    if [ -z "$2" ] || [[ ! "$2" =~ ^[[:alnum:]]+$ ]]; then
+        echo "Provided regular key is invalid." && exit 1
+    fi
+    init_setup_helpers
+    set_regular_key $2 $3 $4
+    rm -r $setup_helper_dir >/dev/null 2>&1
+    exit 0
 fi
 
 [ "$mode" != "uninstall" ] && check_installer_pending_finish
