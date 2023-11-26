@@ -687,7 +687,14 @@ function set_regular_key() {
     echo "rippled server: $cfg_rippled_server"
     echo "host addr: $cfg_host_address"
     echo "host secret: $cfg_host_secret"
-    ! exec_jshelper set-regular-key $cfg_rippled_server $cfg_host_address $cfg_host_secret $1 $2 $3 && echo "Could not set reg key (dulTest)." && return 1
+
+    local tmp=$(mktemp -d)
+    cd $tmp
+    init_setup_helpers
+
+    ! exec_jshelper set-regular-key $cfg_rippled_server $cfg_host_address $cfg_host_secret $1 $2 $3 && echo "Could not set reg key (dulTest)."
+
+    rm -r $setup_helper_dir >/dev/null 2>&1
     return 0
 }
 
@@ -1572,9 +1579,9 @@ elif [ "$mode" == "regular-key" ]; then
     if [ -z "$2" ] || [[ ! "$2" =~ ^[[:alnum:]]+$ ]]; then
         echo "Provided regular key is invalid." && exit 1
     fi
-    init_setup_helpers
+
     set_regular_key $2 $3 $4
-    rm -r $setup_helper_dir >/dev/null 2>&1
+    
     exit 0
 fi
 
