@@ -34,7 +34,6 @@ fi
 
 # Prepare resources URLs
 resource_storage="https://github.com/$repo_owner/$repo_name/releases/download/$latest_version"
-
 licence_url="https://raw.githubusercontent.com/du1ana/ev-res-test/main/installer/licence.txt"
 config_url="https://raw.githubusercontent.com/EvernodeXRPL/evernode-resources/main/definitions/definitions.json"
 setup_script_url="$resource_storage/setup.sh"
@@ -70,7 +69,7 @@ export MB_XRPL_USER="sashimbxrpl"
 export CG_SUFFIX="-cg"
 export EVERNODE_AUTO_UPDATE_SERVICE="evernode-auto-update"
 
-export NETWORK="${NETWORK:-devnet}"
+export NETWORK="${NETWORK:-testnet}"
 
 # Private docker registry (not used for now)
 export DOCKER_REGISTRY_USER="sashidockerreg"
