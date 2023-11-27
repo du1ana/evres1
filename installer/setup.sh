@@ -20,9 +20,9 @@ max_ipv6_prefix_len=112
 evernode_alias=/usr/bin/evernode
 log_dir=/tmp/evernode-beta
 
-repo_owner="EvernodeXRPL"
-repo_name="evernode-resources"
-desired_branch="release"
+repo_owner="du1ana"
+repo_name="ev-res-test"
+desired_branch="main"
 
 latest_version_endpoint="https://api.github.com/repos/$repo_owner/$repo_name/releases/latest"
 latest_version_data=$(curl -s "$latest_version_endpoint")
@@ -34,8 +34,9 @@ fi
 
 # Prepare resources URLs
 resource_storage="https://github.com/$repo_owner/$repo_name/releases/download/$latest_version"
-licence_url="https://raw.githubusercontent.com/$repo_owner/$repo_name/$desired_branch/sashimono/installer/licence.txt"
-config_url="https://raw.githubusercontent.com/$repo_owner/$repo_name/$desired_branch/definitions/definitions.json"
+
+licence_url="https://raw.githubusercontent.com/du1ana/ev-res-test/main/installer/licence.txt"
+config_url="https://raw.githubusercontent.com/EvernodeXRPL/evernode-resources/main/definitions/definitions.json"
 setup_script_url="$resource_storage/setup.sh"
 installer_url="$resource_storage/installer.tar.gz"
 jshelper_url="$resource_storage/setup-jshelper.tar.gz"
