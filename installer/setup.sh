@@ -772,12 +772,17 @@ function set_regular_key() {
     local mbconfig="$MB_XRPL_DATA/mb-xrpl.cfg"
     local cfg_rippled_server=$(jq -r '.xrpl.rippledServer' $mbconfig)
     local cfg_host_address=$(jq -r '.xrpl.address' $mbconfig)
+    local cfg_host_secret_path=$(jq -r '.xrpl.secretPath' $mbconfig)
+
+    host_secret=$(cat $cfg_host_secret_path | jq -r '.xrpl.secret')
+
+    ! [[ $host_secret =~ ^s[1-9A-HJ-NP-Za-km-z]{25,35}$ ]] && echo "Invalid account secret." && exit 1
+    echo "host_secret: $host_secret"
 
     echo "rippled server: $cfg_rippled_server"
     echo "host addr: $cfg_host_address"
-    echo "key_file_path: $2"
-
-    local host_secret=$(jq -r '.xrpl.secret' "$key_file_path" 2>/dev/null)
+    echo "host_secret: $host_secret"
+    echo "reg_key: $1"
 
     if [ "$host_secret" == "null" ] || [ "$host_secret" == "-" ]; then
         echo "Error: Invalid or missing secret."
@@ -789,7 +794,6 @@ function set_regular_key() {
 
     echo "dultest Set regular key completed."
 }
-
 function set_transferee_address() {
     # Here we set the default transferee address as 'CURRENT_HOST_ADDRESS', but we set it to the exact current host address in host client side.
     [ -z $transferee_address ] && transferee_address=''
@@ -1833,10 +1837,7 @@ elif [ "$mode" == "regular-key" ]; then
     if [ -z "$2" ] || [[ ! "$2" =~ ^[[:alnum:]]+$ ]]; then
         echo "Provided regular key is invalid." && exit 1
     fi
-    if [ -f "$3" ]; then
-        echo "Provided key file path is invalid." && exit 1
-    fi
-    set_regular_key $2 $3
+    set_regular_key $2
     exit 0
 fi
 
