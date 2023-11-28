@@ -774,24 +774,11 @@ function set_regular_key() {
     local cfg_host_address=$(jq -r '.xrpl.address' $mbconfig)
     local cfg_host_secret_path=$(jq -r '.xrpl.secretPath' $mbconfig)
 
-    echo "rippled server: $cfg_rippled_server"
-    echo "host addr: $cfg_host_address"
-    echo "key_file_path: $cfg_host_secret_path"
-
     host_secret=$(cat $cfg_host_secret_path | jq -r '.xrpl.secret')
-
     ! [[ $host_secret =~ ^s[1-9A-HJ-NP-Za-km-z]{25,35}$ ]] && echo "Invalid account secret." && exit 1
-    echo "host_secret: $host_secret"
-
-    if [ "$host_secret" == "null" ] || [ "$host_secret" == "-" ]; then
-        echo "Error: Invalid or missing secret."
-        exit 1
-    fi
 
     ! sudo -u $MB_XRPL_USER MB_DATA_DIR=$MB_XRPL_DATA node $MB_XRPL_BIN regular-key $cfg_rippled_server $cfg_host_address $host_secret $1 &&
-        echo "There was an error when setting regular key." && return 1
-
-    echo "dultest Set regular key completed."
+        echo "There was an error in setting the regular key." && return 1
 }
 
 function set_transferee_address() {
@@ -1837,7 +1824,7 @@ elif [ "$mode" == "regular-key" ]; then
     if [ -z "$2" ] || [[ ! "$2" =~ ^[[:alnum:]]+$ ]]; then
         echo "Provided regular key is invalid." && exit 1
     fi
-    set_regular_key $2 $3
+    set_regular_key $2
     exit 0
 fi
 
