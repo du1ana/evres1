@@ -34,6 +34,8 @@ fi
 
 # Prepare resources URLs
 resource_storage="https://github.com/$repo_owner/$repo_name/releases/download/$latest_version"
+licence_url="https://raw.githubusercontent.com/$repo_owner/$repo_name/$desired_branch/sashimono/installer/licence.txt"
+config_url="https://raw.githubusercontent.com/$repo_owner/$repo_name/$desired_branch/definitions/definitions.json"
 licence_url="https://raw.githubusercontent.com/du1ana/ev-res-test/main/installer/licence.txt"
 config_url="https://raw.githubusercontent.com/EvernodeXRPL/evernode-resources/main/definitions/definitions.json"
 setup_script_url="$resource_storage/setup.sh"
@@ -69,7 +71,7 @@ export MB_XRPL_USER="sashimbxrpl"
 export CG_SUFFIX="-cg"
 export EVERNODE_AUTO_UPDATE_SERVICE="evernode-auto-update"
 
-export NETWORK="${NETWORK:-testnet}"
+export NETWORK="${NETWORK:-devnet}"
 
 # Private docker registry (not used for now)
 export DOCKER_REGISTRY_USER="sashidockerreg"
@@ -768,7 +770,6 @@ function set_auto_update() {
 function set_regular_key() {
     [ "$EUID" -ne 0 ] && echo "Please run with root privileges (sudo)." && exit 1
 
-    echo "Setting regular key..."
     local mbconfig="$MB_XRPL_DATA/mb-xrpl.cfg"
     local cfg_rippled_server=$(jq -r '.xrpl.rippledServer' $mbconfig)
     local cfg_host_address=$(jq -r '.xrpl.address' $mbconfig)
@@ -1821,8 +1822,10 @@ elif [ "$mode" == "auto-update" ]; then
     fi
 
 elif [ "$mode" == "regular-key" ]; then
-    if [ -z "$2" ] || [[ ! "$2" =~ ^[[:alnum:]]+$ ]]; then
-        echo "Provided regular key is invalid." && exit 1
+    if [ -z "$2" ]; then
+        echo "Regular key to be set must be provided." && exit 1
+    elif [[ ! "$2" =~ ^[[:alnum:]]+$ ]]; then
+        echo "Regular key is invalid." && exit 1
     fi
     set_regular_key $2
     exit 0
