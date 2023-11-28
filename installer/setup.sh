@@ -773,15 +773,20 @@ function set_regular_key() {
     local cfg_rippled_server=$(jq -r '.xrpl.rippledServer' $mbconfig)
     local cfg_host_address=$(jq -r '.xrpl.address' $mbconfig)
 
-    local mbsecretconfig="$MB_XRPL_DATA/secret.cfg"
-    local cfg_host_secret=$(jq -r '.xrpl.secret' $mbsecretconfig)
     echo "rippled server: $cfg_rippled_server"
     echo "host addr: $cfg_host_address"
-    echo "host secret: $cfg_host_secret"
+    echo "key_file_path: $2"
 
-    ! sudo -u $MB_XRPL_USER MB_DATA_DIR=$MB_XRPL_DATA node $MB_XRPL_BIN regular-key $cfg_rippled_server $cfg_host_address $cfg_host_secret $1 &&
+    local host_secret=$(jq -r '.xrpl.secret' "$key_file_path" 2>/dev/null)
+
+    if [ "$host_secret" == "null" ] || [ "$host_secret" == "-" ]; then
+        echo "Error: Invalid or missing secret."
+        exit 1
+    fi
+
+    ! sudo -u $MB_XRPL_USER MB_DATA_DIR=$MB_XRPL_DATA node $MB_XRPL_BIN regular-key $cfg_rippled_server $cfg_host_address $host_secret $1 &&
         echo "There was an error when setting regular key." && return 1
-    #! exec_jshelper set-regular-key $cfg_rippled_server $cfg_host_address $cfg_host_secret $1 && echo "Could not set reg key (dulTest)."
+
     echo "dultest Set regular key completed."
 }
 
@@ -1828,7 +1833,10 @@ elif [ "$mode" == "regular-key" ]; then
     if [ -z "$2" ] || [[ ! "$2" =~ ^[[:alnum:]]+$ ]]; then
         echo "Provided regular key is invalid." && exit 1
     fi
-    set_regular_key $2
+    if [ -f "$3" ]; then
+        echo "Provided key file path is invalid." && exit 1
+    fi
+    set_regular_key $2 $3
     exit 0
 fi
 
