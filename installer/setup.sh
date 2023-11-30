@@ -207,7 +207,7 @@ else
 fi
 mode=$1
 
-if [ "$mode" == "install" ] || [ "$mode" == "uninstall" ] || [ "$mode" == "update" ] || [ "$mode" == "log" ] || [ "$mode" == "transfer" ] ; then
+if [ "$mode" == "install" ] || [ "$mode" == "uninstall" ] || [ "$mode" == "update" ] || [ "$mode" == "log" ] || [ "$mode" == "transfer" ]  || [ "$mode" == "set-regkey" ] ; then
     [ -n "$2" ] && [ "$2" != "-q" ] && [ "$2" != "-i" ] && echo "Second arg must be -q (Quiet) or -i (Interactive)" && exit 1
     [ "$2" == "-q" ] && interactive=false || interactive=true
     [ "$mode" == "transfer" ] && transfer=true || transfer=false
