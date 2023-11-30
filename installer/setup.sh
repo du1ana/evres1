@@ -770,7 +770,7 @@ function set_auto_update() {
 function set_regular_key() {
     [ "$EUID" -ne 0 ] && echo "Please run with root privileges (sudo)." && exit 1
 
-    ! sudo -u $MB_XRPL_USER MB_DATA_DIR=$MB_XRPL_DATA node $MB_XRPL_BIN regular-key $1 &&
+    ! sudo -u $MB_XRPL_USER MB_DATA_DIR=$MB_XRPL_DATA node $MB_XRPL_BIN set-regkey $1 &&
         echo "There was an error in setting the regular key." && return 1
 }
 
