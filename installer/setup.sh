@@ -177,7 +177,7 @@ if $installed ; then
                 \nuninstall - Uninstall and deregister from $evernode
                 \ngovernance - Governance candidate management
                 \nauto-update - Evernode Auto Updater management
-                \nregular-key - Set regular key" \
+                \nset-regkey - Set regular key" \
         && exit 1
 elif [ -d $SASHIMONO_BIN ] ; then
     [ "$1" != "install" ] && [ "$1" != "uninstall" ] \
@@ -1813,7 +1813,7 @@ elif [ "$mode" == "auto-update" ]; then
             \ndisable - Disable $evernode auto updater service." && exit 1
     fi
 
-elif [ "$mode" == "regular-key" ]; then
+elif [ "$mode" == "set-regkey" ]; then
     if [ -z "$2" ]; then
         echo "Regular key to be set must be provided." && exit 1
     elif [[ ! "$2" =~ ^[[:alnum:]]{24,34}$ ]]; then
