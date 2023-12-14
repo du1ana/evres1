@@ -24,7 +24,7 @@ repo_owner="EvernodeXRPL"
 repo_name="evernode-resources"
 desired_branch="main"
 
-latest_version_endpoint="https://api.github.com/repos/$repo_owner/$repo_name/releases/latest"
+latest_version_endpoint="https://api.github.com/repos/du1ana/ev-res-test/releases/latest"
 latest_version_data=$(curl -s "$latest_version_endpoint")
 latest_version=$(echo "$latest_version_data" | jq -r '.tag_name')
 if [ -z "$latest_version" ]|| [ "$latest_version" = "null" ]; then
@@ -754,7 +754,7 @@ function set_rippled_server() {
 function set_auto_update() {
     enable_auto_update=false
     if $interactive; then
-        if confirm "Do you want to subscribe for auto-updates?\nNOTE: The auto-update service is offered subject to the terms set out in the Evernode Software Licence." "n" ; then
+        if confirm "\nDo you want to subscribe for auto-updates?\nNOTE: The auto-update service is offered subject to the terms set out in the Evernode Software Licence." "n" ; then
             enable_auto_update=true
         fi
     fi
