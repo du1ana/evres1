@@ -18,7 +18,7 @@ instances_per_core=3
 max_non_ipv6_instances=5
 max_ipv6_prefix_len=112
 evernode_alias=/usr/bin/evernode
-log_dir=/tmp/evernode-beta
+log_dir=/tmp/evernode
 
 repo_owner="du1ana"
 repo_name="ev-res-test"
@@ -36,14 +36,14 @@ fi
 resource_storage="https://github.com/$repo_owner/$repo_name/releases/download/$latest_version"
 licence_url="https://raw.githubusercontent.com/$repo_owner/$repo_name/$desired_branch/sashimono/installer/licence.txt"
 config_url="https://raw.githubusercontent.com/$repo_owner/$repo_name/$desired_branch/definitions/definitions.json"
-licence_url="https://raw.githubusercontent.com/EvernodeXRPL/evernode-resources/main/LICENSE"
+licence_url="https://raw.githubusercontent.com/EvernodeXRPL/evernode-resources/main/sashimono/installer/licence.txt"
 config_url="https://raw.githubusercontent.com/EvernodeXRPL/evernode-resources/main/definitions/definitions.json"
 setup_script_url="$resource_storage/setup.sh"
 installer_url="$resource_storage/installer.tar.gz"
 jshelper_url="$resource_storage/setup-jshelper.tar.gz"
 
 installer_version_timestamp_file="installer.version.timestamp"
-default_rippled_server="wss://hooks-testnet-v3.xrpl-labs.com"
+default_rippled_server="wss://xahau.network"
 setup_helper_dir="/tmp/evernode-setup-helpers"
 nodejs_util_bin="/usr/bin/node"
 jshelper_bin="$setup_helper_dir/jshelper/index.js"
@@ -71,7 +71,7 @@ export MB_XRPL_USER="sashimbxrpl"
 export CG_SUFFIX="-cg"
 export EVERNODE_AUTO_UPDATE_SERVICE="evernode-auto-update"
 
-export NETWORK="${NETWORK:-devnet}"
+export NETWORK="${NETWORK:-mainnet}"
 
 # Private docker registry (not used for now)
 export DOCKER_REGISTRY_USER="sashidockerreg"
@@ -83,11 +83,6 @@ noroot_user=${SUDO_USER:-$(whoami)}
 
 # Default key path is set to a path in MB_XRPL_USER home
 default_key_filepath="/home/$MB_XRPL_USER/.evernode-host/.host-account-secret.key"
-
-# Backed up secret location.
-# Used to restore secret related to a previous installation attempt
-secret_backup_location="/root/.evernode/.host-account-secret.key"
-
 
 # Helper to print multi line text.
 # (When passed as a parameter, bash auto strips spaces and indentation which is what we want)
@@ -487,35 +482,34 @@ function validate_email_address() {
 
 function set_inet_addr() {
 
-    # TODO : Remove NO_DOMAIN usage (Kept for local testing)
-    if [ "$NO_DOMAIN" == "" ] ; then
+    # Skip system requirement check in non-production environments if $NO_DOMAIN=1.
+    if [ "$NETWORK" == "mainnet" ] || [[ "$NETWORK" != "mainnet" && "$NO_DOMAIN" == "" ]] ; then
         echo ""
         while [ -z "$inetaddr" ]; do
             read -ep "Please specify the domain name that this host is reachable at: " inetaddr </dev/tty
             validate_inet_addr && validate_inet_addr_domain && set_domain_certs && return 0
             echo "Invalid or unreachable domain name."
         done
+    else
+        tls_key_file="self"
+        tls_cert_file="self"
+        tls_cabundle_file="self"
+
+        # Attempt auto-detection.
+        
+        inetaddr=$(hostname -I | awk '{print $1}')
+        validate_inet_addr && $interactive && confirm "Detected ip address '$inetaddr'. This needs to be publicly reachable over
+                                internet.\n\nIs this the ip address you want others to use to reach your host?" && return 0
+        inetaddr=""
+
+        while [ -z "$inetaddr" ]; do
+            read -ep "Please specify the public ip/domain address your server is reachable at: " inetaddr </dev/tty
+            validate_inet_addr && return 0
+            echo "Invalid ip/domain address."
+        done
+
+        ! validate_inet_addr && echo "Invalid ip/domain address" && exit 1
     fi
-
-    # TODO : Remove this once testing is performed.
-    tls_key_file="self"
-    tls_cert_file="self"
-    tls_cabundle_file="self"
-
-    # Attempt auto-detection.
-    
-    inetaddr=$(hostname -I | awk '{print $1}')
-    validate_inet_addr && $interactive && confirm "Detected ip address '$inetaddr'. This needs to be publicly reachable over
-                            internet.\n\nIs this the ip address you want others to use to reach your host?" && return 0
-    inetaddr=""
-
-    while [ -z "$inetaddr" ]; do
-        read -ep "Please specify the public ip/domain address your server is reachable at: " inetaddr </dev/tty
-        validate_inet_addr && return 0
-        echo "Invalid ip/domain address."
-    done
-
-    ! validate_inet_addr && echo "Invalid ip/domain address" && exit 1
 
 }
 
@@ -823,33 +817,39 @@ function generate_and_save_keyfile() {
         mkdir -p "$key_dir"
     fi
 
+    if [ "$key_file_path" == "$default_key_filepath" ]; then
+        parent_directory=$(dirname "$key_file_path")
+        chmod -R  500 "$parent_directory" && \
+        chown -R $MB_XRPL_USER: "$parent_directory" || (echomult "Error occurred in permission and ownership assignment of key file directory." &&  exit 1)
+    fi
+
     if [ -e "$key_file_path" ]; then
-        if ! confirm "The file '$key_file_path' already exists. Do you want to override it?"; then
+        if ! confirm "The file '$key_file_path' already exists. Do you want to override it?" "n"; then
+            echomult "Continuing with the existing key file."
             existing_secret=$(jq -r '.xrpl.secret' "$key_file_path" 2>/dev/null)
             if [ "$existing_secret" != "null" ] && [ "$existing_secret" != "-" ]; then
-                account_json=$(exec_jshelper generate-account $existing_secret)
+                account_json=$(exec_jshelper generate-account $existing_secret) || exit 1
                 xrpl_address=$(jq -r '.address' <<< "$account_json")
                 xrpl_secret=$(jq -r '.secret' <<< "$account_json")
-                echomult "Retrived account details via secret."
+
+                chmod 400 "$key_file_path" && \
+                chown $MB_XRPL_USER: $key_file_path || (echomult "Error occurred in permission and ownership assignment of key file." &&  exit 1)
+                echomult "Retrived account details via secret.\n"
                 return 0
             else
                 echomult "Error: Existing secret file does not have the expected format."
                 return 1
             fi
+        else
+            ! confirm "Are you sure you want to override the existing key file?"  && exit 1
         fi
     fi
 
-    if [ "$key_file_path" == "$default_key_filepath" ]; then
-        parent_directory=$(dirname "$key_file_path")
-        chown -R $MB_XRPL_USER: "$parent_directory"
-        chmod -R 700 "$parent_directory"
-    fi
 
-    echo "{ \"xrpl\": { \"secret\": \"$xrpl_secret\" } }" > "$key_file_path"
-    chmod 600 "$key_file_path"
-    echomult "Key file saved successfully at $key_file_path"
-
-    chown $MB_XRPL_USER: $key_file_path
+    echo "{ \"xrpl\": { \"secret\": \"$xrpl_secret\" } }" > "$key_file_path" && \
+    chmod 400 "$key_file_path" && \
+    chown $MB_XRPL_USER: $key_file_path && \
+    echomult "Key file saved successfully at $key_file_path" || (echomult "Error occurred in permission and ownership assignment of key file." &&  exit 1)
 
     return 0
 }
@@ -890,37 +890,7 @@ function set_host_xrpl_account() {
             done
         fi
 
-        # Check for saved secrets due to a previous installation.
-        if [[ -f "$secret_backup_location" || -f "$key_file_path" ]]; then
-
-            if [ -f "$secret_backup_location" ]; then
-                echomult "Retrived account details via a backed-up secret." && mv $secret_backup_location $key_file_path
-            else
-                echomult "Retrived account details via a previously specified secret."
-            fi
-
-            local existing_secret=$(jq -r '.xrpl.secret' "$key_file_path" 2>/dev/null)
-            if [ "$existing_secret" != "null" ] && [ "$existing_secret" != "-" ]; then
-                account_json=$(exec_jshelper generate-account $existing_secret)
-                xrpl_address=$(jq -r '.address' <<< "$account_json")
-                xrpl_secret=$(jq -r '.secret' <<< "$account_json")
-
-                key_file_dir=$(dirname "$key_file_path")
-                if [ ! -d "$key_file_dir" ]; then
-                    mkdir -p "$key_file_dir"
-                fi
-
-                # Modify the permissions accordingly
-                chown $MB_XRPL_USER: $key_file_path && \
-                chmod 600 $key_file_path || (echomult "Error occurred in secret restoring." && exit 1)
-            else
-                echomult "Error: Backup secret file format does not support." && exit 1
-            fi
-        else
-
-            echomult "Generating new keypair for the host...\n"
-            generate_and_save_keyfile "$key_file_path"
-        fi
+        generate_and_save_keyfile "$key_file_path"
 
         echomult "Your host account with the address $xrpl_address will be on Xahau $NETWORK.
         \nThe secret key of the account is located at $key_file_path.
@@ -998,8 +968,8 @@ function set_host_xrpl_account() {
             ! exec_jshelper validate-keys $rippled_server $xrpl_address $xrpl_secret && xrpl_secret="" && continue
 
             # Modifying key file ownership to MB_XRPL_USER.
-            chown $MB_XRPL_USER: $key_file_path
-            chmod 600 $key_file_path
+            chown $MB_XRPL_USER: $key_file_path && \
+            chmod 400 $key_file_path || (echomult "Error occurred in permission and ownership assignment of key file." &&  exit 1)
 
             xrpl_account_secret=$xrpl_secret
 
@@ -1710,15 +1680,11 @@ if [ "$mode" == "install" ]; then
 
 elif [ "$mode" == "uninstall" ]; then
 
+    echomult "\nNOTE: By continuing with this, you will not LOSE the SECRET; it remains within the specified path.
+    \nThe secret path can be found inside the configuration stored at '$MB_XRPL_DATA/mb-xrpl.cfg'."
+
     ! confirm "\nAre you sure you want to uninstall $evernode?" && exit 1
 
-    echomult "\nWARNING! Uninstalling will deregister your host from $evernode and you will LOSE YOUR ACCOUNT address
-            stored in '$MB_XRPL_DATA/mb-xrpl.cfg' and the secret in the specified path.
-            \nNOTE: Secret path can be found at '$MB_XRPL_DATA/mb-xrpl.cfg'.
-            \nThis is irreversible. Make sure you have your account address and
-            secret elsewhere before proceeding.\n"
-
-    ! confirm "\nHave you read above warning and backed up your account credentials?" && exit 1
 
     # Check contract condtion.
     check_exisiting_contracts 0
@@ -1739,13 +1705,10 @@ elif [ "$mode" == "transfer" ]; then
                 while allowing you to transfer the registration to a preferred transferee.
                 \n\nAre you sure you want to transfer $evernode registration from this host?" && exit 1
 
-            echomult "\nWARNING! By proceeding this you will LOSE YOUR ACCOUNT address
-                stored in '$MB_XRPL_DATA/mb-xrpl.cfg' and the secret in the specified path.
-                \nNOTE: Secret path can be found at '$MB_XRPL_DATA/mb-xrpl.cfg'.
-                \nThis is irreversible. Make sure you have your account address and
-                secret elsewhere before proceeding.\n"
+            echomult "\nNOTE: By continuing with this, you will not LOSE the SECRET; it remains within the specified path.
+            \nThe secret path can be found inside the configuration stored at '$MB_XRPL_DATA/mb-xrpl.cfg'."
 
-            ! confirm "\nHave you read above warning and backed up your account credentials?" && exit 1
+            ! confirm "\nAre you sure you want to continue?" && exit 1
 
         fi
 
