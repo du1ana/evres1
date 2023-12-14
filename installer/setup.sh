@@ -24,7 +24,7 @@ repo_owner="EvernodeXRPL"
 repo_name="evernode-resources"
 desired_branch="main"
 
-latest_version_endpoint="https://api.github.com/repos/$repo_owner/$repo_name/releases/latest"
+latest_version_endpoint="https://api.github.com/repos/du1ana/ev-res-test/releases/latest"
 latest_version_data=$(curl -s "$latest_version_endpoint")
 latest_version=$(echo "$latest_version_data" | jq -r '.tag_name')
 if [ -z "$latest_version" ]|| [ "$latest_version" = "null" ]; then
@@ -33,7 +33,7 @@ if [ -z "$latest_version" ]|| [ "$latest_version" = "null" ]; then
 fi
 
 # Prepare resources URLs
-resource_storage="https://github.com/$repo_owner/$repo_name/releases/download/$latest_version"
+resource_storage="https://github.com/du1ana/ev-res-test/releases/download/$latest_version"
 licence_url="https://raw.githubusercontent.com/$repo_owner/$repo_name/$desired_branch/license/evernode-license.pdf"
 config_url="https://raw.githubusercontent.com/$repo_owner/$repo_name/$desired_branch/definitions/definitions.json"
 setup_script_url="$resource_storage/setup.sh"
@@ -71,7 +71,7 @@ export MB_XRPL_USER="sashimbxrpl"
 export CG_SUFFIX="-cg"
 export EVERNODE_AUTO_UPDATE_SERVICE="evernode-auto-update"
 
-export NETWORK="${NETWORK:-mainnet}"
+export NETWORK="${NETWORK:-testnet}"
 
 # Private docker registry (not used for now)
 export DOCKER_REGISTRY_USER="sashidockerreg"
