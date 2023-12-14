@@ -20,8 +20,8 @@ max_ipv6_prefix_len=112
 evernode_alias=/usr/bin/evernode
 log_dir=/tmp/evernode
 
-repo_owner="du1ana"
-repo_name="ev-res-test"
+repo_owner="EvernodeXRPL"
+repo_name="evernode-resources"
 desired_branch="main"
 
 latest_version_endpoint="https://api.github.com/repos/$repo_owner/$repo_name/releases/latest"
@@ -33,9 +33,7 @@ if [ -z "$latest_version" ]|| [ "$latest_version" = "null" ]; then
 fi
 
 # Prepare resources URLs
-resource_storage="https://github.com/$repo_owner/$repo_name/releases/download/$latest_version"
-repo_owner="EvernodeXRPL"
-repo_name="evernode-resources"
+resource_storage="https://github.com/du1ana/ev-res-test/releases/download/$latest_version"
 licence_url="https://raw.githubusercontent.com/$repo_owner/$repo_name/$desired_branch/sashimono/installer/licence.txt"
 config_url="https://raw.githubusercontent.com/$repo_owner/$repo_name/$desired_branch/definitions/definitions.json"
 setup_script_url="$resource_storage/setup.sh"
@@ -756,7 +754,7 @@ function set_rippled_server() {
 function set_auto_update() {
     enable_auto_update=false
     if $interactive; then
-        if confirm "Do you want to subscribe for auto-updates? The auto-updater service is offered subject to the terms set out in the Evernode Software Licence." "n" ; then
+        if confirm "Do you want to subscribe for auto-updates?\nNOTE: The auto-update service is offered subject to the terms set out in the Evernode Software Licence." "n" ; then
             enable_auto_update=true
         fi
     fi
@@ -1796,7 +1794,7 @@ elif [ "$mode" == "governance" ]; then
 
 elif [ "$mode" == "auto-update" ]; then
     if [ "$2" == "enable" ]; then
-        confirm "Do you want to subscribe for auto-updates? The auto-updater service is offered subject to the terms set out in the Evernode Software Licence." && enable_evernode_auto_updater && exit 0
+        confirm "Are you sure you want to subscribe for auto-updates?\nNOTE: The auto-update service is offered subject to the terms set out in the Evernode Software Licence." && enable_evernode_auto_updater && exit 0
     elif [ "$2" == "disable" ]; then
         remove_evernode_auto_updater && exit 0
     else
