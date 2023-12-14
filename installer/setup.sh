@@ -771,8 +771,8 @@ function set_auto_update() {
 function set_regular_key() {
     [ "$EUID" -ne 0 ] && echo "Please run with root privileges (sudo)." && exit 1
 
-    ! sudo -u $MB_XRPL_USER MB_DATA_DIR=$MB_XRPL_DATA node $MB_XRPL_BIN set-regkey $1 &&
-        echo "There was an error in setting the regular key." && return 1
+    ! sudo -u $MB_XRPL_USER MB_DATA_DIR=$MB_XRPL_DATA node $MB_XRPL_BIN regkey $1 &&
+        echo "There was an error in changing the regular key." && return 1
 }
 
 function set_transferee_address() {
@@ -1856,7 +1856,7 @@ elif [ "$mode" == "regkey" ]; then
         set_regular_key
         exit 0  
     else
-        echomult "Regular key management
+        echomult "Regular key management tool
             \nSupported commands:
             \nset- Assign or update the regular key.
             \ndelete - Delete the regular key" && exit 1
