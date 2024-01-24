@@ -1,0 +1,20 @@
+{
+    "testnet": {
+        "governorAddress": "rGVHr1PrfL93UAjyw3DWZoi9adz2sLp2yL",
+        "rippledServer": "wss://hooks-testnet-v3.xrpl-labs.com",
+        "stateIndexId": "evernodeindex",
+        "networkID": 21338
+    },
+    "devnet": {
+        "governorAddress": "rwBigRmbdi4CwtdS9yV9f7YqaZbzVbnvrt",
+        "rippledServer": "wss://hooks-testnet-v3.xrpl-labs.com",
+        "stateIndexId": "evernodev3devindex",
+        "networkID": 21338
+    },
+    "mainnet": {
+        "governorAddress": "",
+        "rippledServer": "wss://xahau.network",
+        "stateIndexId": "evernodev3devindex",
+        "networkID": 21337
+    }
+}
