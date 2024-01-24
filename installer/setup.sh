@@ -20,11 +20,11 @@ max_ipv6_prefix_len=112
 evernode_alias=/usr/bin/evernode
 log_dir=/tmp/evernode
 
-repo_owner="EvernodeXRPL"
-repo_name="evernode-resources"
+repo_owner="du1ana"
+repo_name="evres1"
 desired_branch="main"
 
-latest_version_endpoint="https://api.github.com/repos/du1ana/ev-res-test/releases/latest"
+latest_version_endpoint="https://api.github.com/repos/$repo_owner/$repo_name/releases/latest"
 latest_version_data=$(curl -s "$latest_version_endpoint")
 latest_version=$(echo "$latest_version_data" | jq -r '.tag_name')
 if [ -z "$latest_version" ]|| [ "$latest_version" = "null" ]; then
@@ -33,7 +33,7 @@ if [ -z "$latest_version" ]|| [ "$latest_version" = "null" ]; then
 fi
 
 # Prepare resources URLs
-resource_storage="https://github.com/du1ana/ev-res-test/releases/download/$latest_version"
+resource_storage="https://github.com/$repo_owner/$repo_name/releases/download/$latest_version"
 licence_url="https://raw.githubusercontent.com/$repo_owner/$repo_name/$desired_branch/license/evernode-license.pdf"
 config_url="https://raw.githubusercontent.com/$repo_owner/$repo_name/$desired_branch/definitions/definitions.json"
 setup_script_url="$resource_storage/setup.sh"
@@ -71,7 +71,7 @@ export MB_XRPL_USER="sashimbxrpl"
 export CG_SUFFIX="-cg"
 export EVERNODE_AUTO_UPDATE_SERVICE="evernode-auto-update"
 
-export NETWORK="${NETWORK:-testnet}"
+export NETWORK="${NETWORK:-devnet}"
 
 # Private docker registry (not used for now)
 export DOCKER_REGISTRY_USER="sashidockerreg"
@@ -157,7 +157,7 @@ if $installed ; then
         && echo "$evernode is already installed on your host. Use the 'evernode' command to manage your host." \
         && exit 1
 
-    [ "$1" != "uninstall" ] && [ "$1" != "status" ] && [ "$1" != "list" ] && [ "$1" != "update" ] && [ "$1" != "log" ] && [ "$1" != "applyssl" ] && [ "$1" != "transfer" ] && [ "$1" != "config" ] &&  [ "$1" != "delete" ] &&  [ "$1" != "governance" ] &&  [ "$1" != "auto-update" ] &&  [ "$1" != "set-regkey" ] \
+    [ "$1" != "uninstall" ] && [ "$1" != "status" ] && [ "$1" != "list" ] && [ "$1" != "update" ] && [ "$1" != "log" ] && [ "$1" != "applyssl" ] && [ "$1" != "transfer" ] && [ "$1" != "config" ] &&  [ "$1" != "delete" ] &&  [ "$1" != "governance" ] &&  [ "$1" != "auto-update" ] &&  [ "$1" != "regkey" ] \
         && echomult "$evernode host management tool
                 \nYour host is registered on $evernode.
                 \nSupported commands:
@@ -172,7 +172,7 @@ if $installed ; then
                 \nuninstall - Uninstall and deregister from $evernode
                 \ngovernance - Governance candidate management
                 \nauto-update - Evernode Auto Updater management
-                \nset-regkey - Set regular key" \
+                \nregkey - Regular key management" \
         && exit 1
 elif [ -d $SASHIMONO_BIN ] ; then
     [ "$1" != "install" ] && [ "$1" != "uninstall" ] \
@@ -206,8 +206,8 @@ if [ "$mode" == "install" ] || [ "$mode" == "uninstall" ] || [ "$mode" == "updat
     [ -n "$2" ] && [ "$2" != "-q" ] && [ "$2" != "-i" ] && echo "Second arg must be -q (Quiet) or -i (Interactive)" && exit 1
     [ "$2" == "-q" ] && interactive=false || interactive=true
     [ "$mode" == "transfer" ] && transfer=true || transfer=false
-    [ "$mode" == "set-regkey" ] && set_regkey=true || set_regkey=false
-    (! $transfer || $installed || $set_regkey) && [ "$EUID" -ne 0 ] && echo "Please run with root privileges (sudo)." && exit 1
+    [ "$mode" == "regkey" ] && regkey=true || regkey=false
+    (! $transfer || $installed || $regkey) && [ "$EUID" -ne 0 ] && echo "Please run with root privileges (sudo)." && exit 1
 fi
 
 # Change the relevant setup helper path based on Evernode installation condition and the command mode.
@@ -227,26 +227,36 @@ function install_nodejs_utility() {
     mkdir -p /etc/apt/keyrings
     curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
 
-    NODE_MAJOR=16
+    NODE_MAJOR=20
     echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
     apt-get update
     apt-get -y install nodejs
 }
 
-function check_prereq() {
-    echomult "\nChecking initial level pre-requisites..."
+function check_common_prereq() {
+    # Check jq command is installed.
+    if ! command -v jq &>/dev/null; then
+        echo "jq command not found. Installing.."
+        apt-get install -y jq >/dev/null
+    fi
 
     if ! command -v node &>/dev/null; then
         echo "Installing nodejs..."
-        ! install_nodejs_utility >/dev/null || exit 1
+        ! install_nodejs_utility >/dev/null && exit 1
     else
         version=$(node -v | cut -d '.' -f1)
         version=${version:1}
-        if [[ $version -lt 16 ]]; then
-            echo "$evernode requires NodeJs 16.x or later. You system has NodeJs $version installed. Either remove the NodeJs installation or upgrade to NodeJs 16.x."
+        if [[ $version -lt 20 ]]; then
+            echo "$evernode requires NodeJs 20.x or later. You system has NodeJs $version installed. Either remove the NodeJs installation or upgrade to NodeJs 20.x."
             exit 1
         fi
     fi
+}
+
+function check_prereq() {
+    echomult "\nChecking initial level prerequisites..."
+
+    check_common_prereq
 
     # Check bc command is installed.
     if ! command -v bc &>/dev/null; then
@@ -262,7 +272,7 @@ function check_prereq() {
 
     # Check qrencode command is installed.
     if ! command -v qrencode &>/dev/null; then
-        stage "qrencode command not found. Installing.."
+        echo "qrencode command not found. Installing.."
         apt-get install -y qrencode >/dev/null
     fi
 }
@@ -765,8 +775,8 @@ function set_auto_update() {
 function set_regular_key() {
     [ "$EUID" -ne 0 ] && echo "Please run with root privileges (sudo)." && exit 1
 
-    ! sudo -u $MB_XRPL_USER MB_DATA_DIR=$MB_XRPL_DATA node $MB_XRPL_BIN set-regkey $1 &&
-        echo "There was an error in setting the regular key." && return 1
+    ! sudo -u $MB_XRPL_USER MB_DATA_DIR=$MB_XRPL_DATA node $MB_XRPL_BIN regkey $1 &&
+        echo "There was an error in changing the regular key." && return 1
 }
 
 function set_transferee_address() {
@@ -778,15 +788,15 @@ function set_transferee_address() {
 
         local address=''
         while true ; do
-            read -ep "Specify the XRPL account address of the transferee: " address </dev/tty
-            ! [[ $address =~ ^r[a-zA-Z0-9]{24,34}$ ]] && echo "Invalid XRPL account address." || break
+            read -ep "Specify the Xahau account address of the transferee: " address </dev/tty
+            ! [[ $address =~ ^r[a-zA-Z0-9]{24,34}$ ]] && echo "Invalid Xahau account address." || break
 
         done
 
         transferee_address=$address
     fi
 
-    ! [[ $transferee_address =~ ^r[a-zA-Z0-9]{24,34}$ ]] && echo "Invalid XRPL account address." && exit 1
+    ! [[ $transferee_address =~ ^r[a-zA-Z0-9]{24,34}$ ]] && echo "Invalid Xahau account address." && exit 1
 }
 
 # Function to generate QR code in the terminal
@@ -866,7 +876,11 @@ function set_host_xrpl_account() {
     # Create MB_XRPL_USER as we require that user for secret key ownership management.
     if ! grep -q "^$MB_XRPL_USER:" /etc/passwd; then
         echomult "Creating Message-board User..."
-        useradd --shell /usr/sbin/nologin -m $MB_XRPL_USER
+        useradd --shell /usr/sbin/nologin -m $MB_XRPL_USER 2>/dev/null
+
+        # Setting the ownership of the MB_XRPL_USER's home to MB_XRPL_USER expilcity.
+        # NOTE : There can be user id mismatch, as we do not delete MB_XRPL_USER's home in the uninstallation eventhoughthe user is removed.
+        chown -R "$MB_XRPL_USER":"$MB_XRPL_USER" /home/$MB_XRPL_USER
     fi
 
     if [ "$account_validate_criteria" == "register" ]; then
@@ -903,6 +917,9 @@ function set_host_xrpl_account() {
 
         echomult "Your host account with the address $xrpl_address will be on Xahau $NETWORK.
         \nThe secret key of the account is located at $key_file_path.
+        \nNOTE: It is your responsibility to safeguard/backup this file in a secure manner.
+        \nIf you lose it, you will not be able to access any funds in your Host account. NO ONE else can recover it.
+
         \n\nThis is the account that will represent this host on the Evernode host registry. You need to load up the account with following funds in order to continue with the installation.
         \n1. At least $min_xah_requirement XAH to cover regular transaction fees for the first three months.
         \n2. At least $reg_fee EVR to cover Evernode registration fee.
@@ -919,7 +936,7 @@ function set_host_xrpl_account() {
             confirm "\nDo you want to re-check the account condition?\nPressing 'n' would terminate the installation." || exit 1
         done
 
-        declare -Ar AccCondtionArry=( [0]="RC-FRESH" [1]="RC-PREPARED" )
+        declare -Ar AccCondtionArry=( [0]="RC-NON-ACTIVE" [1]="RC-ACTIVE" )
 
         if [ "$account_condition" == "${AccCondtionArry[0]}" ]; then
 
@@ -931,17 +948,17 @@ function set_host_xrpl_account() {
                 && break
                 confirm "\nDo you want to re-check the balance?\nPressing 'n' would terminate the installation." || exit 1
             done
+            account_condition=${AccCondtionArry[1]}
+        fi
 
-            echomult "\nPreparing account with EVR trust-line..."
+        if [ "$account_condition" == "${AccCondtionArry[1]}" ]; then
+
+            echomult "\nPreparing host account..."
             while true ; do
                 wait_call "exec_jshelper prepare-host $rippled_server $EVERNODE_GOVERNOR_ADDRESS $xrpl_address $xrpl_secret $inetaddr" "Account preparation is successfull." && break
                 confirm "\nDo you want to re-try account preparation?\nPressing 'n' would terminate the installation." || exit 1
             done
 
-            account_condition=${AccCondtionArry[1]}
-        fi
-
-        if [ "$account_condition" == "${AccCondtionArry[1]}" ]; then
             echomult "\n\nIn order to register in Evernode you need to have $reg_fee EVR balance in your host account. Please deposit the required registration fee in EVRs.
             \nYou can scan the provided QR code in your wallet app to send funds:"
 
@@ -961,7 +978,7 @@ function set_host_xrpl_account() {
         fi
 
         while true ; do
-            read -ep "Specify the XRPL account address: " xrpl_address </dev/tty
+            read -ep "Specify the Xahau account address: " xrpl_address </dev/tty
             ! [[ $xrpl_address =~ ^r[0-9a-zA-Z]{24,34}$ ]] && echo "Invalid XRPL account address." && continue
 
             echo "Checking account $xrpl_address..."
@@ -1288,7 +1305,7 @@ function reg_info() {
     local mb_user_runtime_dir="/run/user/$mb_user_id"
     local sashimono_mb_xrpl_status=$(sudo -u "$MB_XRPL_USER" XDG_RUNTIME_DIR="$mb_user_runtime_dir" systemctl --user is-active $MB_XRPL_SERVICE)
     echo "Sashimono agent status: $sashimono_agent_status"
-    echo "Sashimono mb xrpl status: $sashimono_mb_xrpl_status"
+    echo "Sashimono message board status: $sashimono_mb_xrpl_status"
     echo -e "\nYour account details are stored in $MB_XRPL_DATA/mb-xrpl.cfg"
 }
 
@@ -1603,18 +1620,23 @@ function delete_instance()
 {
     [ "$EUID" -ne 0 ] && echo "Please run with root privileges (sudo)." && exit 1
 
-    instance_name=$1
-    echo "Deleting instance $instance_name"
-    ! sudo -u $MB_XRPL_USER MB_DATA_DIR=$MB_XRPL_DATA node $MB_XRPL_BIN delete $instance_name &&
-        echo "There was an error in deleting the instance." && exit 1
-
     # Restart the message board to update the instance count
     local mb_user_id=$(id -u "$MB_XRPL_USER")
     local mb_user_runtime_dir="/run/user/$mb_user_id"
 
-    sudo -u "$MB_XRPL_USER" XDG_RUNTIME_DIR="$mb_user_runtime_dir" systemctl --user restart $MB_XRPL_SERVICE
+    echomult "Stopping the message board..."
+    sudo -u "$MB_XRPL_USER" XDG_RUNTIME_DIR="$mb_user_runtime_dir" systemctl --user stop $MB_XRPL_SERVICE
 
-    echo "Instance deletion completed."
+    local has_error=0
+    instance_name=$1
+    echo "Deleting instance $instance_name"
+    ! sudo -u $MB_XRPL_USER MB_DATA_DIR=$MB_XRPL_DATA node $MB_XRPL_BIN delete $instance_name &&
+        echo "There was an error in deleting the instance." && has_error=1
+
+    echomult "Starting the message board..."
+    sudo -u "$MB_XRPL_USER" XDG_RUNTIME_DIR="$mb_user_runtime_dir" systemctl --user start $MB_XRPL_SERVICE
+
+    [ $has_error == 0 ] && echo "Instance deletion completed."
 }
 
 # Begin setup execution flow --------------------
@@ -1756,6 +1778,8 @@ elif [ "$mode" == "transfer" ]; then
             rippled_server=${6}             # Rippled server URL
         fi
 
+        check_common_prereq
+
         set_environment_configs
 
         init_setup_helpers
@@ -1792,9 +1816,6 @@ elif [ "$mode" == "list" ]; then
     sashi list
 
 elif [ "$mode" == "update" ]; then
-    config_json_path="$SASHIMONO_BIN/evernode-setup-helpers/configuration.json"
-    export EVERNODE_GOVERNOR_ADDRESS=${OVERRIDE_EVERNODE_GOVERNOR_ADDRESS:-$(jq -r ".$NETWORK.governorAddress" $config_json_path)}
-
     update_evernode
 
 elif [ "$mode" == "log" ]; then
@@ -1835,14 +1856,24 @@ elif [ "$mode" == "auto-update" ]; then
             \ndisable - Disable $evernode auto updater service." && exit 1
     fi
 
-elif [ "$mode" == "set-regkey" ]; then
-    if [ -z "$2" ]; then
-        echo "Regular key to be set must be provided." && exit 1
-    elif [[ ! "$2" =~ ^[[:alnum:]]{24,34}$ ]]; then
-        echo "Regular key is invalid." && exit 1
+elif [ "$mode" == "regkey" ]; then
+    if [ "$2" == "set" ]; then
+        if [ -z "$3" ]; then
+            echo "Regular key to be set must be provided." && exit 1
+        elif [[ ! "$3" =~ ^[[:alnum:]]{24,34}$ ]]; then
+            echo "Regular key is invalid." && exit 1
+        fi
+        set_regular_key $3
+        exit 0  
+    elif [ "$2" == "delete" ]; then
+        set_regular_key
+        exit 0  
+    else
+        echomult "Regular key management tool
+            \nSupported commands:
+            \nset [regularKey] - Assign or update the regular key.
+            \ndelete - Delete the regular key" && exit 1
     fi
-    set_regular_key $2
-    exit 0
 fi
 
 [ "$mode" != "uninstall" ] && check_installer_pending_finish
