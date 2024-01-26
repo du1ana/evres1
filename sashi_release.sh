@@ -9,4 +9,7 @@ tag_version="sashi_$1"
 target_branch="$2"
 release_note="$3"
 
+git add .
+git commit -m "tag_version release_note"
+git push origin main
 gh release create "$tag_version" ./installer/* -t "$tag_version" --target "$target_branch" -n "$release_note"
