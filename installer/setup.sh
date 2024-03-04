@@ -1454,7 +1454,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
         local country_code_line=$(echo "$reg_info" | tail -2 | head -1)
         local country_code=$(echo "$country_code_line" | awk -F : ' { print $2 } ')
-        echo -e "\n$country_code_line\n"
+        echo -e "\n$country_code\n"
     }
 
     function check_sanctioned() {
