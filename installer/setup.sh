@@ -1458,14 +1458,13 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
     }
 
     function check_sanctioned() {
-        echo "dulTest check_sanctioned input:$1" 
         if [ -z "$1" ]; then
             echo "Invalid country code received." && exit 1
         fi
         sanctioned_countries=("KP" "RU" "VE" "CU" "IR" "SY")
-        local countrycode=${1^^}
+        local countrycode=$1
 
-        if echo "${sanctioned_countries[*]}" | grep -qiw $countrycode; then
+        if echo "${sanctioned_countries[*]}" | grep -qiw "$countrycode"; then
             echo "Sanctioned country code detected. Unable to install or update $evernode." && exit 1
         else
             return 0
@@ -1917,7 +1916,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         echo -e "Using '$inetaddr' as host internet address.\n"
 
         set_country_code
-        check_sanctioned "$countrycode"
+        #check_sanctioned "$countrycode"
 
         echo -e "Using '$countrycode' as country code.\n"
 
