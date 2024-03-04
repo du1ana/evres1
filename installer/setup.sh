@@ -26,8 +26,8 @@
     log_dir=/tmp/evernode
     root_user="root"
 
-    repo_owner="EvernodeXRPL"
-    repo_name="evernode-test-resources"
+    repo_owner="du1ana"
+    repo_name="evres1"
     desired_branch="main"
 
     latest_version_endpoint="https://api.github.com/repos/$repo_owner/$repo_name/releases/latest"
@@ -89,7 +89,7 @@
     # 3 Month minimum operational duration is considered.
     export MIN_OPERATIONAL_DURATION=3
 
-    export NETWORK="${NETWORK:-mainnet}"
+    export NETWORK="${NETWORK:-devnet}"
 
     # Private docker registry (not used for now)
     export DOCKER_REGISTRY_USER="sashidockerreg"
