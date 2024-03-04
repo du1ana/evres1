@@ -26,8 +26,8 @@
     log_dir=/tmp/evernode
     root_user="root"
 
-    repo_owner="du1ana"
-    repo_name="evres1"
+    repo_owner="EvernodeXRPL"
+    repo_name="evernode-test-resources"
     desired_branch="main"
 
     latest_version_endpoint="https://api.github.com/repos/$repo_owner/$repo_name/releases/latest"
@@ -89,7 +89,7 @@
     # 3 Month minimum operational duration is considered.
     export MIN_OPERATIONAL_DURATION=3
 
-    export NETWORK="${NETWORK:-devnet}"
+    export NETWORK="${NETWORK:-mainnet}"
 
     # Private docker registry (not used for now)
     export DOCKER_REGISTRY_USER="sashidockerreg"
@@ -603,11 +603,11 @@
         resolve_countrycode || echo "Could not detect country code."
 
         # Uncomment this if we want the user to manually change the auto-detected country code.
-        if [ -n "$countrycode" ] && ! confirm "Based on the internet address '$inetaddr' we have detected that your country
-                                                code is '$countrycode'. Do you want to specify a different country code" ; then
-            return 0
-        fi
-        countrycode=""
+        # if [ -n "$countrycode" ] && ! confirm "Based on the internet address '$inetaddr' we have detected that your country
+                                                #                                         code is '$countrycode'. Do you want to specify a different country code" ; then
+            #     return 0
+        # fi
+        # countrycode=""
 
         while [ -z "$countrycode" ]; do
             # This will be asked if auto-detection fails or if user wants to specify manually.
@@ -1916,7 +1916,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         echo -e "Using '$inetaddr' as host internet address.\n"
 
         set_country_code
-        check_sanctioned "$countrycode"
+        #check_sanctioned "$countrycode"
 
         echo -e "Using '$countrycode' as country code.\n"
 
