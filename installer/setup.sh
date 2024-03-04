@@ -1916,7 +1916,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         echo -e "Using '$inetaddr' as host internet address.\n"
 
         set_country_code
-        #check_sanctioned "$countrycode"
+        check_sanctioned "$countrycode"
 
         echo -e "Using '$countrycode' as country code.\n"
 
