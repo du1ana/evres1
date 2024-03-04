@@ -1458,6 +1458,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
     }
 
     function check_sanctioned() {
+        echo "dulTest>> checking sanctioned"
         sanctioned_countries=("KP" "RU" "VE" "CU" "IR" "SY")
 
         if echo "${sanctioned_countries[*]}" | grep -qiw "${1^^}"; then
