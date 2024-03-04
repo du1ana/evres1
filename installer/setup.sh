@@ -1458,6 +1458,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
     }
 
     function check_sanctioned() {
+        echo "dulTest check_sanctioned input:$1" 
         if [ -z "$1" ]; then
             echo "Invalid country code received." && exit 1
         fi
