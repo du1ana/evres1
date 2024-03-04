@@ -1464,7 +1464,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         sanctioned_countries=("KP" "RU" "VE" "CU" "IR" "SY")
         local countrycode=$1
 
-        if echo "${sanctioned_countries[*]}" | grep -qiw "$countrycode"; then
+        if echo "${sanctioned_countries[*]}" | grep -qiw $countrycode; then
             echo "Sanctioned country code detected. Unable to install or update $evernode." && exit 1
         else
             return 0
