@@ -1449,17 +1449,11 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
     function get_country_code() {
         local reg_info=$(MB_DATA_DIR=$MB_XRPL_DATA node $MB_XRPL_BIN reginfo || echo ERROR)
-        
-        echo "dulTest>> get country code"
-        # echo "$reg_info"
-        
         local error=$(echo "$reg_info" | tail -1)
         [ "$error" == "ERROR" ] && echo "${reg_info/ERROR/""}" && exit 1
 
         local country_code_line=$(echo "$reg_info" | tail -2 | head -1)
-        echo "dulTest>> $country_code_line"
         local country_code=$(echo "$country_code_line" | awk -F : ' { print $2 } ')
-        echo "dulTest>> $country_code"
         echo -e "\n$country_code_line\n"
     }
 
@@ -1467,10 +1461,8 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         if [ -z "$1" ]; then
             echo "Invalid country code received." && exit 1
         fi
-        echo "dulTest>> checking sanctioned"
         sanctioned_countries=("KP" "RU" "VE" "CU" "IR" "SY")
         local countrycode=${1^^}
-        echo "dulTest>> input received: $countrycode"
 
         if echo "${sanctioned_countries[*]}" | grep -qiw $countrycode; then
             echo "Sanctioned country code detected. Unable to install or update $evernode." && exit 1
