@@ -603,11 +603,11 @@
         resolve_countrycode || echo "Could not detect country code."
 
         # Uncomment this if we want the user to manually change the auto-detected country code.
-        # if [ -n "$countrycode" ] && ! confirm "Based on the internet address '$inetaddr' we have detected that your country
-        #                                         code is '$countrycode'. Do you want to specify a different country code" ; then
-        #     return 0
-        # fi
-        # countrycode=""
+        if [ -n "$countrycode" ] && ! confirm "Based on the internet address '$inetaddr' we have detected that your country
+                                                code is '$countrycode'. Do you want to specify a different country code" ; then
+            return 0
+        fi
+        countrycode=""
 
         while [ -z "$countrycode" ]; do
             # This will be asked if auto-detection fails or if user wants to specify manually.
