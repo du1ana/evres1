@@ -7,7 +7,7 @@ file_paths=(
     "/home/kavindu/Documents/Evernode/sashimono/sashimono/installer/setup.sh /home/kavindu/Documents/Evernode/release/evres1/installer/setup.sh"
 )
 
-cd "/home/dulana/EvernodeXRPL/sashimono" &&  make -j8 && make installer -j8
+cd "/home/kavindu/Documents/Evernode/sashimono/sashimono" &&  make -j8 && make installer -j8
 
 # Loop through each pair and perform the copy and replace operation
 for path_pair in "${file_paths[@]}"; do
