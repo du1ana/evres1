@@ -1098,7 +1098,7 @@
 
         [ ! -z $1 ] && operation=$1 || operation="register"
 
-        if [ "$reputationd_xrpl_secret" == "-" ]; then #
+        if [ "$reputationd_xrpl_secret" == "-" ]; then 
             confirm "\nDo you want to use the default key file path ${default_reputationd_key_filepath} to save the new account key?" && reputationd_key_file_path=$default_reputationd_key_filepath
 
             if [ "$reputationd_key_file_path" != "$default_reputationd_key_filepath" ]; then
@@ -1428,7 +1428,6 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         ! create_evernode_alias && install_failure
 
         set +o pipefail
-
 
         rm -r $tmp
 
@@ -2008,7 +2007,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         
         #configure reputationd service
         echomult "Configuring reputationd service"
-        ! (sudo -u $REPUTATIOND_USER mkdir -p "$mb_user_dir"/.config/systemd/user/) && echo "Message board user systemd folder creation failed" && abort
+        ! (sudo -u $REPUTATIOND_USER mkdir -p "$reputationd_user_dir"/.config/systemd/user/) && echo "Message board user systemd folder creation failed" && abort
         # StartLimitIntervalSec=0 to make unlimited retries. RestartSec=5 is to keep 5 second gap between restarts.
         echo "[Unit]
             Description=Running evernode reputation and reward system.
