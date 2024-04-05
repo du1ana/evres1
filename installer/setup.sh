@@ -24,6 +24,7 @@
     min_swap_mb=0
     evernode_alias=/usr/bin/evernode
     log_dir=/tmp/evernode
+    script_dir=$(dirname "$(realpath "$0")")
     root_user="root"
     #repo_owner="EvernodeXRPL"
     repo_owner="du1ana"
@@ -1097,8 +1098,8 @@
 
         [ ! -z $1 ] && operation=$1 || operation="register"
 
-        if [ "$reputationd_xrpl_secret" == "-" ]; then
-            confirm "\nDo you want to use the default key file paths ${default_reputationd_key_filepath} to save the new account key?" && reputationd_key_file_path=$default_reputationd_key_filepath
+        if [ "$reputationd_xrpl_secret" == "-" ]; then #
+            confirm "\nDo you want to use the default key file path ${default_reputationd_key_filepath} to save the new account key?" && reputationd_key_file_path=$default_reputationd_key_filepath
 
             if [ "$reputationd_key_file_path" != "$default_reputationd_key_filepath" ]; then
                 while true; do
@@ -1382,9 +1383,52 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
                 [[ $cleaned_line =~ ^-p(.*)$ ]] && echo -e "\\e[1A\\e[K${cleaned_line:3}" || echo "${cleaned_line}"
             done && install_failure
 
+        # Reputationd
+        #placing binaries
+        cp -r "$script_dir"/reputationd $SASHIMONO_BIN
+
+        # Create REPUTATIOND_USER if does not exists..
+        if ! grep -q "^$REPUTATIOND_USER:" /etc/passwd; then
+            useradd --shell /usr/sbin/nologin -m $REPUTATIOND_USER
+
+            # Setting the ownership of the REPUTATIOND_USER's home to REPUTATIOND_USER expilcity.
+            # NOTE : There can be user id mismatch, as we do not delete REPUTATIOND_USER's home in the uninstallation even though the user is removed.
+            chown -R "$REPUTATIOND_USER":"$REPUTATIOND_USER" /home/$REPUTATIOND_USER
+
+            reputationd_secret_path=$(jq -r '.reputation.secretPath' "$REPUTATIOND_CONFIG")
+            chown "$REPUTATIOND_USER": $reputationd_secret_path
+        fi
+
+        # Assign reputationd user priviledges.
+        if ! id -nG "$REPUTATIOND_USER" | grep -qw "$SASHIADMIN_GROUP"; then
+            usermod --lock $REPUTATIOND_USER
+            usermod -a -G $SASHIADMIN_GROUP $REPUTATIOND_USER
+            loginctl enable-linger $REPUTATIOND_USER # Enable lingering to support service installation.
+        fi
+
+        # First create the folder from root and then transfer ownership to the user
+        # since the folder is created in /etc/sashimono directory.
+        ! mkdir -p $REPUTATIOND_DATA && echo "Could not create '$REPUTATIOND_DATA'. Make sure you are running as sudo." && exit 1
+        # Change ownership to reputationd user.
+        chown -R "$REPUTATIOND_USER":"$REPUTATIOND_USER" $REPUTATIOND_DATA
+        
+        echomult "Installation successful! Installation log can be found at $logfile
+            \n\nYour system is now registered on $evernode. You can check your system status with 'evernode status' command.
+            \n\nNOTE: Installation will only mint the lease tokens. Please use 'evernode offerlease' command to create offers for the minted lease tokens.
+            \nThe host becomes eligible to send heartbeats after generating offers for minted lease tokens."
+
+        installed=true
+
+        echo "\nwould you like to opt-in to the evernode reputation and reward system?"
+        read -p "Type 'yes' to opt-in: " confirmation </dev/tty
+        [ "$confirmation" != "yes" ] && echo "Cancelled from opting-in evernode reputation and reward system." && exit 0
+
+        configure_reputationd_system
+
         ! create_evernode_alias && install_failure
 
         set +o pipefail
+
 
         rm -r $tmp
 
@@ -1953,7 +1997,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
     configure_reputationd_system(){
         # Configure reputationd users and register host.
-        stage "configuring evernode reputation and reward system..."
+        echomult "configuring evernode reputation and reward system..."
 
         #account generation, new, wait-for-funds, prepare
         set_host_reputationd_account "register"
@@ -1963,7 +2007,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         reputationd_user_runtime_dir="/run/user/$reputationd_user_id"
         
         #configure reputationd service
-        stage "Configuring reputationd service"
+        echomult "Configuring reputationd service"
         ! (sudo -u $REPUTATIOND_USER mkdir -p "$mb_user_dir"/.config/systemd/user/) && echo "Message board user systemd folder creation failed" && abort
         # StartLimitIntervalSec=0 to make unlimited retries. RestartSec=5 is to keep 5 second gap between restarts.
         echo "[Unit]
@@ -2078,48 +2122,6 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         install_evernode 0
 
         rm -r $setup_helper_dir >/dev/null 2>&1
-
-        # Reputationd
-        #placing binaries
-        cp -r "$script_dir"/reputationd $SASHIMONO_BIN
-
-        # Create REPUTATIOND_USER if does not exists..
-        if ! grep -q "^$REPUTATIOND_USER:" /etc/passwd; then
-            useradd --shell /usr/sbin/nologin -m $REPUTATIOND_USER
-
-            # Setting the ownership of the REPUTATIOND_USER's home to REPUTATIOND_USER expilcity.
-            # NOTE : There can be user id mismatch, as we do not delete REPUTATIOND_USER's home in the uninstallation even though the user is removed.
-            chown -R "$REPUTATIOND_USER":"$REPUTATIOND_USER" /home/$REPUTATIOND_USER
-
-            reputationd_secret_path=$(jq -r '.reputation.secretPath' "$REPUTATIOND_CONFIG")
-            chown "$REPUTATIOND_USER": $reputationd_secret_path
-        fi
-
-        # Assign reputationd user priviledges.
-        if ! id -nG "$REPUTATIOND_USER" | grep -qw "$SASHIADMIN_GROUP"; then
-            usermod --lock $REPUTATIOND_USER
-            usermod -a -G $SASHIADMIN_GROUP $REPUTATIOND_USER
-            loginctl enable-linger $REPUTATIOND_USER # Enable lingering to support service installation.
-        fi
-
-        # First create the folder from root and then transfer ownership to the user
-        # since the folder is created in /etc/sashimono directory.
-        ! mkdir -p $REPUTATIOND_DATA && echo "Could not create '$REPUTATIOND_DATA'. Make sure you are running as sudo." && exit 1
-        # Change ownership to reputationd user.
-        chown -R "$REPUTATIOND_USER":"$REPUTATIOND_USER" $REPUTATIOND_DATA
-        
-        echomult "Installation successful! Installation log can be found at $logfile
-            \n\nYour system is now registered on $evernode. You can check your system status with 'evernode status' command.
-            \n\nNOTE: Installation will only mint the lease tokens. Please use 'evernode offerlease' command to create offers for the minted lease tokens.
-            \nThe host becomes eligible to send heartbeats after generating offers for minted lease tokens."
-
-        installed=true
-
-        echo "would you like to opt-in to the evernode reputation and reward system?"
-        read -p "Type 'yes' to opt-in: " confirmation </dev/tty
-        [ "$confirmation" != "yes" ] && echo "Cancelled from opting-in evernode reputation and reward system." && exit 0
-
-        configure_reputationd_system
 
     elif [ "$mode" == "uninstall" ]; then
 
