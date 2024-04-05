@@ -1,3 +1,4 @@
+#./sashi_release.sh v3.4.8 main kavindu3 
 #!/bin/bash
 
 # Define an array of source and destination file paths

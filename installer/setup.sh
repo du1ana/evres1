@@ -25,9 +25,10 @@
     evernode_alias=/usr/bin/evernode
     log_dir=/tmp/evernode
     root_user="root"
-
-    repo_owner="EvernodeXRPL"
-    repo_name="evernode-test-resources"
+    #repo_owner="EvernodeXRPL"
+    repo_owner="du1ana"
+    #repo_name="evernode-test-resources"
+    repo_name="evres1"
     desired_branch="main"
 
     latest_version_endpoint="https://api.github.com/repos/$repo_owner/$repo_name/releases/latest"
@@ -60,6 +61,7 @@
     xrpl_address="-"
     xrpl_secret="-"
     reputationd_xrpl_secret="-"
+    reputationd_xrpl_address="-"
     countrycode="-"
     email_address="-"
     tls_key_file="self"
@@ -95,7 +97,8 @@
     # 3 Month minimum operational duration is considered.
     export MIN_OPERATIONAL_DURATION=3
 
-    export NETWORK="${NETWORK:-mainnet}"
+    #export NETWORK="${NETWORK:-mainnet}"
+    export NETWORK="${NETWORK:-devnet}"
 
     # Private docker registry (not used for now)
     export DOCKER_REGISTRY_USER="sashidockerreg"
@@ -955,70 +958,6 @@
             [ -z "$ipv6_net_interface" ] && ipv6_net_interface="-"
         fi
 
-        if [ -f "$REPUTATIOND_CONFIG" ]; then
-            echomult "\nReading configuration from existing Reputationd configuration file..."
-
-            local owner=$(stat -c "%U" "$REPUTATIOND_CONFIG")
-            local group=$(stat -c "%G" "$REPUTATIOND_CONFIG")
-            local access=$(stat -c "%a" "$REPUTATIOND_CONFIG")
-
-            ([ "$owner" != "$REPUTATIOND_USER" ] || [ "$group" != "$REPUTATIOND_USER" ] || [ "$access" != "644" ]) &&
-                echomult "\nConfiguration file permissions have been altered." &&
-                exit 1
-
-            local override_network=$(jq -r ".xrpl.network | select( . != null )" "$REPUTATIOND_CONFIG")
-            if [ ! -z $override_network ]; then
-                NETWORK="$override_network"
-                set_environment_configs || exit 1
-            fi
-
-            local override_rippled_server=$(jq -r ".xrpl.rippledServer | select( . != null )" "$REPUTATIOND_CONFIG")
-            [ ! -z $override_rippled_server ] && rippled_server="$override_rippled_server"
-            ! read_fallback_rippled_servers_from_config && exit 1
-            fallback_rippled_servers="$read_fallback_rippled_servers_res"
-
-            reputationd_xrpl_address=$(jq -r ".xrpl.address | select( . != null )" "$REPUTATIOND_CONFIG")
-            reputationd_key_file_path=$(jq -r ".xrpl.secretPath | select( . != null )" "$REPUTATIOND_CONFIG")
-            #TODO check for the reputationd_lease_amount
-            reputationd_lease_amount=$(jq ".xrpl.leaseAmount | select( . != null )" "$REPUTATIOND_CONFIG")
-            # Format lease amount since jq gives it in exponential format.
-            reputationd_lease_amount=$(awk -v lease_amount="$reputationd_lease_amount" 'BEGIN { printf("%f\n", lease_amount) }' </dev/null)
-            reputationd_extra_txn_fee=$(jq ".xrpl.affordableExtraFee | select( . != null )" "$REPUTATIOND_CONFIG")
-            [ -z $reputationd_extra_txn_fee ] && extra_txn_fee=0
-            reputationd_email_address=$(jq -r ".host.emailAddress | select( . != null )" "$REPUTATIOND_CONFIG")
-
-            # Validating important configurations.
-            ([ -z $reputationd_xrpl_address ] || [ -z $reputationd_key_file_path ] || [ -z $reputationd_lease_amount ] || [ -z $extra_txn_fee ] || [ -z $email_address ]) && echo "Configuration file format has been altered." && exit 1
-            if [ -n "$reputationd_key_file_path" ] && [ -e "$keyreputationd_key_file_path_file_path" ]; then
-                # Change the ownership in case user is removed.
-                chown "$REPUTATIOND_USER": $reputationd_key_file_path
-
-                reputationd_xrpl_secret=$(jq -r ".xrpl.secret | select( . != null )" "$reputationd_key_file_path")
-
-                ! validate_rippled_url "$rippled_server" && exit 1
-
-                reputationd_xrpl_secret=$(cat $reputationd_key_file_path | jq -r '.xrpl.secret')
-
-                ! [[ $reputationd_xrpl_secret =~ ^s[1-9A-HJ-NP-Za-km-z]{25,35}$ ]] && echo "Invalid account secret." && exit 1
-
-                echo "Checking configured account keys..."
-                ! exec_jshelper validate-keys $rippled_server $reputationd_xrpl_address $reputationd_xrpl_secret && echo "Invalid account secret." && exit 1
-            else
-                echo "Cannot resume the installation due to secret path issue." && exit 1
-            fi
-
-            ! validate_positive_decimal $lease_amount && echo "Lease amount should be a numerical value greater than zero." && exit 1
-
-            ! ([[ $extra_txn_fee =~ ^[0-9]+$ ]] && [[ $extra_txn_fee -ge 0 ]]) && echo "Extra fee amount should be an integer value greater than or equal zero." && exit 1
-
-            ! validate_email_address $email_address && exit 1
-
-            ipv6_subnet=$(jq -r ".networking.ipv6.subnet | select( . != null )" "$REPUTATIOND_CONFIG")
-            [ -z "$ipv6_subnet" ] && ipv6_subnet="-"
-            ipv6_net_interface=$(jq -r ".networking.ipv6.interface | select( . != null )" "$REPUTATIOND_CONFIG")
-            [ -z "$ipv6_net_interface" ] && ipv6_net_interface="-"
-        fi
-
         if [ -f "$SASHIMONO_CONFIG" ]; then
             echomult "\nReading configuration from existing Sashimono Agent configuration file..."
 
@@ -1158,13 +1097,6 @@
 
         [ ! -z $1 ] && operation=$1 || operation="register"
 
-        # Take only user input if this is for transfer or deregister
-        if [[ "$reputationd_xrpl_secret" == "-" ]] && ([[ "$operation" == "transfer" ]] || [[ "$operation" == "deregister" ]]); then
-            collect_host_xrpl_account_inputs
-
-            return 0
-        fi
-
         if [ "$reputationd_xrpl_secret" == "-" ]; then
             confirm "\nDo you want to use the default key file paths ${default_reputationd_key_filepath} to save the new account key?" && reputationd_key_file_path=$default_reputationd_key_filepath
 
@@ -1186,9 +1118,9 @@
                 done
             fi
 
-            key_dir=$(dirname "$reputationd_key_file_path")
-            if [ ! -d "$key_dir" ]; then
-                mkdir -p "$key_dir"
+            reputationd_key_dir=$(dirname "$reputationd_key_file_path")
+            if [ ! -d "$reputationd_key_dir" ]; then
+                mkdir -p "$reputationd_key_dir"
             fi
 
             if [ "$reputationd_key_file_path" == "$default_reputationd_key_filepath" ]; then
@@ -1230,14 +1162,7 @@
                     exit 1
                 fi
             else
-                ! confirm "\nAre you performing a fresh Evernode installation?
-                 \nNOTE: Pressing 'n' implies that you are in the process of transferring from a previous installation in $NETWORK." && operation="re-register"
-
-                if [ "$operation" == "register" ]; then
-                    generate_keys
-                else
-                    collect_host_xrpl_account_inputs
-                fi
+                generate_keys
 
                 echo "{ \"xrpl\": { \"secret\": \"$reputationd_xrpl_secret\" } }" >"$reputationd_key_file_path" &&
                     chmod 400 "$key_file_path" &&
@@ -2154,13 +2079,6 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
         rm -r $setup_helper_dir >/dev/null 2>&1
 
-        echomult "Installation successful! Installation log can be found at $logfile
-            \n\nYour system is now registered on $evernode. You can check your system status with 'evernode status' command.
-            \n\nNOTE: Installation will only mint the lease tokens. Please use 'evernode offerlease' command to create offers for the minted lease tokens.
-            \nThe host becomes eligible to send heartbeats after generating offers for minted lease tokens."
-
-        installed=true
-
         # Reputationd
         #placing binaries
         cp -r "$script_dir"/reputationd $SASHIMONO_BIN
@@ -2173,8 +2091,8 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
             # NOTE : There can be user id mismatch, as we do not delete REPUTATIOND_USER's home in the uninstallation even though the user is removed.
             chown -R "$REPUTATIOND_USER":"$REPUTATIOND_USER" /home/$REPUTATIOND_USER
 
-            secret_path=$(jq -r '.reputation.secretPath' "$REPUTATIOND_CONFIG")
-            chown "$REPUTATIOND_USER": $secret_path
+            reputationd_secret_path=$(jq -r '.reputation.secretPath' "$REPUTATIOND_CONFIG")
+            chown "$REPUTATIOND_USER": $reputationd_secret_path
         fi
 
         # Assign reputationd user priviledges.
@@ -2189,6 +2107,13 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         ! mkdir -p $REPUTATIOND_DATA && echo "Could not create '$REPUTATIOND_DATA'. Make sure you are running as sudo." && exit 1
         # Change ownership to reputationd user.
         chown -R "$REPUTATIOND_USER":"$REPUTATIOND_USER" $REPUTATIOND_DATA
+        
+        echomult "Installation successful! Installation log can be found at $logfile
+            \n\nYour system is now registered on $evernode. You can check your system status with 'evernode status' command.
+            \n\nNOTE: Installation will only mint the lease tokens. Please use 'evernode offerlease' command to create offers for the minted lease tokens.
+            \nThe host becomes eligible to send heartbeats after generating offers for minted lease tokens."
+
+        installed=true
 
         echo "would you like to opt-in to the evernode reputation and reward system?"
         read -p "Type 'yes' to opt-in: " confirmation </dev/tty
