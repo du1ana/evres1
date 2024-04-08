@@ -879,13 +879,22 @@
     }
 
     function generate_keys() {
+        local is_reputationd=false
+        if [[ "$1" == "reputationd" ]]; then
+            is_reputationd=true
+        fi
         while true; do
             account_json=$(exec_jshelper generate-account) && break
             echo "Error occurred in account setting up."
             confirm "\nDo you want to retry?\nPressing 'n' would terminate the installation." || exit 1
         done
-        xrpl_address=$(jq -r '.address' <<<"$account_json")
-        xrpl_secret=$(jq -r '.secret' <<<"$account_json")
+        if $is_reputationd; then
+            reputationd_xrpl_address=$(jq -r '.address' <<<"$account_json")
+            reputationd_xrpl_secret=$(jq -r '.secret' <<<"$account_json")
+        else
+            xrpl_address=$(jq -r '.address' <<<"$account_json")
+            xrpl_secret=$(jq -r '.secret' <<<"$account_json")
+        fi
     }
 
     read_fallback_rippled_servers_res="-"
@@ -1164,7 +1173,7 @@
                     exit 1
                 fi
             else
-                generate_keys
+                generate_keys "reputationd"
 
                 echo "{ \"xrpl\": { \"secret\": \"$reputationd_xrpl_secret\" } }" >"$reputationd_key_file_path" &&
                     chmod 400 "$reputationd_key_file_path" &&
