@@ -2008,7 +2008,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         echomult "configuring evernode reputation and reward system..."
 
         #account generation, new, wait-for-funds, prepare
-        exec_jshelper
+        #exec_jshelper
         set_host_reputationd_account "register"
 
         reputationd_user_dir=/home/"$REPUTATIOND_USER"
