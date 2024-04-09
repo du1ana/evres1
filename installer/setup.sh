@@ -206,7 +206,8 @@
                 \nuninstall - Uninstall and deregister from $evernode.
                 \ngovernance - Governance candidate management.
                 \nregkey - Regular key management.
-                \nofferlease - Create Lease offers for the instances." &&
+                \nofferlease - Create Lease offers for the instances.
+                \reputationd - opt-in to the evernode reputation and reward system." &&
             exit 1
     else
         [ "$1" != "install" ] && [ "$1" != "transfer" ] && [ "$1" != "deregister" ] &&
@@ -1394,8 +1395,6 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
             done && install_failure
 
         # Reputationd
-        #placing binaries
-        cp -r "$reputationd_script_dir"/reputationd $SASHIMONO_BIN
 
         # Create REPUTATIOND_USER if does not exists..
         if ! grep -q "^$REPUTATIOND_USER:" /etc/passwd; then
@@ -2009,6 +2008,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         echomult "configuring evernode reputation and reward system..."
 
         #account generation, new, wait-for-funds, prepare
+        exec_jshelper
         set_host_reputationd_account "register"
 
         reputationd_user_dir=/home/"$REPUTATIOND_USER"
@@ -2318,6 +2318,9 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
     elif [ "$mode" == "offerlease" ]; then
         offerlease
+
+    elif [ "$mode" == "reputationd" ]; then
+        configure_reputationd_system
     fi
 
     $installed && check_installer_pending_finish

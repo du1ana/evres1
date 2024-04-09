@@ -1,4 +1,4 @@
-#./sashi_release.sh v3.4.12 main kavindu7
+#./sashi_release.sh v3.4.13 main kavindu8
 #curl -fsSL https://github.com/du1ana/evres1/releases/download/sashi_v3.4.12/setup.sh | cat | sudo SKIP_SYSREQ=1 NO_DOMAIN=1 NETWORK=testnet bash -s install 
 #!/bin/bash
 
