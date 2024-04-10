@@ -1107,83 +1107,79 @@
     }
     function set_host_reputationd_account() {
 
-        [ ! -z $1 ] && operation=$1 || operation="register"
+        confirm "\nDo you want to use the default key file path ${default_reputationd_key_filepath} to save the new account key?" && reputationd_key_file_path=$default_reputationd_key_filepath
 
-        if [ "$reputationd_xrpl_secret" == "-" ]; then 
-            confirm "\nDo you want to use the default key file path ${default_reputationd_key_filepath} to save the new account key?" && reputationd_key_file_path=$default_reputationd_key_filepath
-
-            if [ "$reputationd_key_file_path" != "$default_reputationd_key_filepath" ]; then
-                while true; do
-                    read -ep "Specify the preferred key file path: " key_file_path </dev/tty
-                    parent_directory=$(dirname "$reputationd_key_file_path")
-
-                    canonicalized_directory=$(realpath "$parent_directory")
-                    root_directory="/root"
-                    canonicalized_root=$(realpath "$root_directory")
-
-
-                    if [[ "$canonicalized_directory" == "$canonicalized_root"* ]]; then
-                        echo "Key should not be located in /root directory." && continue
-                    fi
-
-                    ! [ -e "$parent_directory" ] && echo "Invalid directory path." || break
-                done
-            fi
-
-            reputationd_key_dir=$(dirname "$reputationd_key_file_path")
-            if [ ! -d "$reputationd_key_dir" ]; then
-                mkdir -p "$reputationd_key_dir"
-            fi
-
-            if [ "$reputationd_key_file_path" == "$default_reputationd_key_filepath" ]; then
+        if [ "$reputationd_key_file_path" != "$default_reputationd_key_filepath" ]; then
+            while true; do
+                read -ep "Specify the preferred key file path: " key_file_path </dev/tty
                 parent_directory=$(dirname "$reputationd_key_file_path")
-                chmod -R 500 "$parent_directory" &&
-                    chown -R $REPUTATIOND_USER: "$parent_directory" || {
-                    echomult "Error occurred in permission and ownership assignment of key file directory."
-                    exit 1
-                }
-            fi
 
-            if [ -e "$reputationd_key_file_path" ]; then
-                if confirm "The file '$reputationd_key_file_path' already exists. Do you want to continue using that key file?\nPressing 'n' would terminate the installation."; then
-                    echomult "Continuing with the existing key file."
-                    reputationd_existing_secret=$(jq -r '.xrpl.secret' "$reputationd_key_file_path" 2>/dev/null)
-                    if [ "$reputationd_existing_secret" != "null" ] && [ "$reputationd_existing_secret" != "-" ]; then
-                        while true; do
-                            account_json=$(exec_jshelper generate-account $reputationd_existing_secret) && break
-                            echo "Error occurred when existing account retrieval."
-                            confirm "\nDo you want to retry?\nPressing 'n' would terminate the installation." || exit 1
-                        done
+                canonicalized_directory=$(realpath "$parent_directory")
+                root_directory="/root"
+                canonicalized_root=$(realpath "$root_directory")
 
-                        reputationd_xrpl_address=$(jq -r '.address' <<<"$account_json")
-                        reputationd_xrpl_secret=$(jq -r '.secret' <<<"$account_json")
 
-                        chmod 400 "$reputationd_key_file_path" &&
-                            chown $REPUTATIOND_USER: $reputationd_key_file_path || {
-                            echomult "Error occurred in permission and ownership assignment of key file."
-                            exit 1
-                        }
+                if [[ "$canonicalized_directory" == "$canonicalized_root"* ]]; then
+                    echo "Key should not be located in /root directory." && continue
+                fi
 
-                        echomult "Retrived account details via secret.\n"
-                        return 0
-                    else
-                        echomult "Error: Existing secret file does not have the expected format."
+                ! [ -e "$parent_directory" ] && echo "Invalid directory path." || break
+            done
+        fi
+
+        reputationd_key_dir=$(dirname "$reputationd_key_file_path")
+        if [ ! -d "$reputationd_key_dir" ]; then
+            mkdir -p "$reputationd_key_dir"
+        fi
+
+        if [ "$reputationd_key_file_path" == "$default_reputationd_key_filepath" ]; then
+            parent_directory=$(dirname "$reputationd_key_file_path")
+            chmod -R 500 "$parent_directory" &&
+                chown -R $REPUTATIOND_USER: "$parent_directory" || {
+                echomult "Error occurred in permission and ownership assignment of key file directory."
+                return 1
+            }
+        fi
+
+        if [ -e "$reputationd_key_file_path" ]; then
+            if confirm "The file '$reputationd_key_file_path' already exists. Do you want to continue using that key file?\nPressing 'n' would terminate the installation."; then
+                echomult "Continuing with the existing key file."
+                reputationd_existing_secret=$(jq -r '.xrpl.secret' "$reputationd_key_file_path" 2>/dev/null)
+                if [ "$reputationd_existing_secret" != "null" ] && [ "$reputationd_existing_secret" != "-" ]; then
+                    while true; do
+                        account_json=$(exec_jshelper generate-account $reputationd_existing_secret) && break
+                        echo "Error occurred when existing account retrieval."
+                        confirm "\nDo you want to retry?\nPressing 'n' would terminate the installation." || return 1
+                    done
+
+                    reputationd_xrpl_address=$(jq -r '.address' <<<"$account_json")
+                    reputationd_xrpl_secret=$(jq -r '.secret' <<<"$account_json")
+
+                    chmod 400 "$reputationd_key_file_path" &&
+                        chown $REPUTATIOND_USER: $reputationd_key_file_path || {
+                        echomult "Error occurred in permission and ownership assignment of key file."
                         exit 1
-                    fi
+                    }
+
+                    echomult "Retrived account details via secret.\n"
+                    return 0
                 else
+                    echomult "Error: Existing secret file does not have the expected format."
                     exit 1
                 fi
             else
-                generate_keys "reputationd"
-
-                echo "{ \"xrpl\": { \"secret\": \"$reputationd_xrpl_secret\" } }" >"$reputationd_key_file_path" &&
-                    chmod 400 "$reputationd_key_file_path" &&
-                    chown $REPUTATIOND_USER: $reputationd_key_file_path &&
-                    echomult "Key file saved successfully at $reputationd_key_file_path" || {
-                    echomult "Error occurred in permission and ownership assignment of key file."
-                    exit 1
-                }
+                exit 1
             fi
+        else
+            generate_keys "reputationd"
+
+            echo "{ \"xrpl\": { \"secret\": \"$reputationd_xrpl_secret\" } }" >"$reputationd_key_file_path" &&
+                chmod 400 "$reputationd_key_file_path" &&
+                chown $REPUTATIOND_USER: $reputationd_key_file_path &&
+                echomult "Key file saved successfully at $reputationd_key_file_path" || {
+                echomult "Error occurred in permission and ownership assignment of key file."
+                exit 1
+            }
         fi
     }
     function prepare_host() {
@@ -1432,16 +1428,18 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         read -p "Type 'yes' to opt-in: " confirmation </dev/tty
         [ "$confirmation" != "yes" ] && echo "Cancelled from opting-in evernode reputation and reward system." && exit 0
 
-        configure_reputationd_system
-
         ! create_evernode_alias && install_failure
 
         set +o pipefail
 
         rm -r $tmp
-
+        
         # Write the verison timestamp to a file for later updated version comparison.
         echo $installer_version_timestamp >$SASHIMONO_DATA/$installer_version_timestamp_file
+        if [ ! configure_reputationd_system ]; then
+            echo "error configuring reputationd system."
+            return 1
+        fi 
     }
 
     function check_exisiting_contracts() {
@@ -2003,18 +2001,29 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         [ $has_error == 0 ] && echo "Lease offer creation for minted lease tokens was completed."
     }
 
-    configure_reputationd_system(){
+    function configure_reputationd_system(){
         # Configure reputationd users and register host.
         echomult "configuring evernode reputation and reward system..."
 
-        #account generation, new, wait-for-funds, prepare
-        #exec_jshelper
-        set_host_reputationd_account "register"
+        #account generation,
+        if [ ! set_host_reputationd_account ]; then
+            echo "error setting up reputationd account."
+            return 1;
+        fi
+
+        #new, wait-for-funds, prepare, wait-for-funds
+        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN "new" && echo "error creating configs"
+
+        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds && echo "error retrieving funds"
+
+        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN "prepare" && echo "error preparing account"
+
+        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds && echo "error retrieving funds"
 
         reputationd_user_dir=/home/"$REPUTATIOND_USER"
         reputationd_user_id=$(id -u "$REPUTATIOND_USER")
         reputationd_user_runtime_dir="/run/user/$reputationd_user_id"
-        
+
         #configure reputationd service
         echomult "Configuring reputationd service"
         ! (sudo -u $REPUTATIOND_USER mkdir -p "$reputationd_user_dir"/.config/systemd/user/) && echo "Message board user systemd folder creation failed" && abort
@@ -2026,7 +2035,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
             [Service]
             Type=simple
             WorkingDirectory=$REPUTATIOND_BIN
-            Environment=\"MB_DATA_DIR=$REPUTATIOND_DATA\"
+            Environment=\"REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA\"
             ExecStart=/usr/bin/node $REPUTATIOND_BIN
             Restart=on-failure
             RestartSec=5
