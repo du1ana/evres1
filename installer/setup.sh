@@ -1426,7 +1426,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
         echo "would you like to opt-in to the evernode reputation and reward system?"
         read -p "Type 'yes' to opt-in: " confirmation </dev/tty
-        [ "$confirmation" != "yes" ] && echo "Cancelled from opting-in evernode reputation and reward system." && exit 0
+        [ "$confirmation" != "yes" ] && echo "Cancelled from opting-in evernode reputation and reward system."
 
         ! create_evernode_alias && install_failure
 
@@ -1439,7 +1439,8 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         if [ ! configure_reputationd_system ]; then
             echo "error configuring reputationd system."
             return 1
-        fi 
+        fi
+        exit 0
     }
 
     function check_exisiting_contracts() {
@@ -2329,6 +2330,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         offerlease
 
     elif [ "$mode" == "reputationd" ]; then
+        init_setup_helpers
         configure_reputationd_system
     fi
 
