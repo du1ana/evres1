@@ -1390,8 +1390,23 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
                 [[ $cleaned_line =~ ^-p(.*)$ ]] && echo -e "\\e[1A\\e[K${cleaned_line:3}" || echo "${cleaned_line}"
             done && install_failure
 
-        # Reputationd
+        echomult "Installation successful! Installation log can be found at $logfile
+            \n\nYour system is now registered on $evernode. You can check your system status with 'evernode status' command.
+            \n\nNOTE: Installation will only mint the lease tokens. Please use 'evernode offerlease' command to create offers for the minted lease tokens.
+            \nThe host becomes eligible to send heartbeats after generating offers for minted lease tokens."
 
+        installed=true
+
+        ! create_evernode_alias && install_failure
+
+        set +o pipefail
+
+        rm -r $tmp
+        
+        # Write the verison timestamp to a file for later updated version comparison.
+        echo $installer_version_timestamp >$SASHIMONO_DATA/$installer_version_timestamp_file
+        
+        # Reputationd
         # Create REPUTATIOND_USER if does not exists..
         if ! grep -q "^$REPUTATIOND_USER:" /etc/passwd; then
             useradd --shell /usr/sbin/nologin -m $REPUTATIOND_USER
@@ -1416,31 +1431,15 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         ! mkdir -p $REPUTATIOND_DATA && echo "Could not create '$REPUTATIOND_DATA'. Make sure you are running as sudo." && exit 1
         # Change ownership to reputationd user.
         chown -R "$REPUTATIOND_USER":"$REPUTATIOND_USER" $REPUTATIOND_DATA
-        
-        echomult "Installation successful! Installation log can be found at $logfile
-            \n\nYour system is now registered on $evernode. You can check your system status with 'evernode status' command.
-            \n\nNOTE: Installation will only mint the lease tokens. Please use 'evernode offerlease' command to create offers for the minted lease tokens.
-            \nThe host becomes eligible to send heartbeats after generating offers for minted lease tokens."
-
-        installed=true
-
         echo "would you like to opt-in to the evernode reputation and reward system?"
         read -p "Type 'yes' to opt-in: " confirmation </dev/tty
-        [ "$confirmation" != "yes" ] && echo "Cancelled from opting-in evernode reputation and reward system."
-
-        ! create_evernode_alias && install_failure
-
-        set +o pipefail
-
-        rm -r $tmp
+        [ "$confirmation" != "yes" ] && echo "Cancelled from opting-in evernode reputation and reward system." && exit 0
         
-        # Write the verison timestamp to a file for later updated version comparison.
-        echo $installer_version_timestamp >$SASHIMONO_DATA/$installer_version_timestamp_file
-        if [ ! configure_reputationd_system ]; then
+        configure_reputationd_system
+        if [ ! $? -eq 0 ]; then
             echo "error configuring reputationd system."
             return 1
         fi
-        exit 0
     }
 
     function check_exisiting_contracts() {
