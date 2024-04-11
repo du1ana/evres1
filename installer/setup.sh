@@ -2012,13 +2012,13 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         fi
 
         #new, wait-for-funds, prepare, wait-for-funds
-        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN "new" && echo "error creating configs"
+        wait_call "! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN new $reputationd_xrpl_address $reputationd_key_file_path && echo 'error creating configs'" "successfully saved configs"
 
-        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds && echo "error retrieving funds"
+        wait_call "! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds NATIVE 50 && echo 'error retrieving funds'" "successfully received funds"
 
-        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN "prepare" && echo "error preparing account"
+        wait_call "! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN prepare && echo 'error preparing account'" 
 
-        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds && echo "error retrieving funds"
+        wait_call "! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds NATIVE 50 && echo 'error retrieving funds'"  "successfully received funds"
 
         reputationd_user_dir=/home/"$REPUTATIOND_USER"
         reputationd_user_id=$(id -u "$REPUTATIOND_USER")
