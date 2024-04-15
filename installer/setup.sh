@@ -191,7 +191,7 @@
             echo "$evernode is already installed on your host. You cannot deregister without uninstalling. Use the 'evernode' command to manage your host." &&
             exit 1
 
-        [ "$1" != "uninstall" ] && [ "$1" != "status" ] && [ "$1" != "list" ] && [ "$1" != "update" ] && [ "$1" != "log" ] && [ "$1" != "applyssl" ] && [ "$1" != "transfer" ] && [ "$1" != "config" ] && [ "$1" != "delete" ] && [ "$1" != "governance" ] && [ "$1" != "regkey" ] && [ "$1" != "offerlease" ] &&
+        [ "$1" != "uninstall" ] && [ "$1" != "status" ] && [ "$1" != "list" ] && [ "$1" != "update" ] && [ "$1" != "log" ] && [ "$1" != "applyssl" ] && [ "$1" != "transfer" ] && [ "$1" != "config" ] && [ "$1" != "delete" ] && [ "$1" != "governance" ] && [ "$1" != "regkey" ] && [ "$1" != "offerlease" ] && [ "$1" != "reputationd" ] &&
             echomult "$evernode host management tool
                 \nYour have $evernode installed on your machine.
                 \nSupported commands:
@@ -1070,7 +1070,7 @@
                         xrpl_address=$(jq -r '.address' <<<"$account_json")
                         xrpl_secret=$(jq -r '.secret' <<<"$account_json")
 
-                        chmod 400 "$key_file_path" &&
+                        chmod 440 "$key_file_path" &&
                             chown $MB_XRPL_USER: $key_file_path || {
                             echomult "Error occurred in permission and ownership assignment of key file."
                             exit 1
@@ -1096,7 +1096,7 @@
                 fi
 
                 echo "{ \"xrpl\": { \"secret\": \"$xrpl_secret\" } }" >"$key_file_path" &&
-                    chmod 400 "$key_file_path" &&
+                    chmod 440 "$key_file_path" &&
                     chown $MB_XRPL_USER: $key_file_path &&
                     echomult "Key file saved successfully at $key_file_path" || {
                     echomult "Error occurred in permission and ownership assignment of key file."
@@ -1155,7 +1155,7 @@
                     reputationd_xrpl_address=$(jq -r '.address' <<<"$account_json")
                     reputationd_xrpl_secret=$(jq -r '.secret' <<<"$account_json")
 
-                    chmod 400 "$reputationd_key_file_path" &&
+                    chmod 440 "$reputationd_key_file_path" &&
                         chown $REPUTATIOND_USER: $reputationd_key_file_path || {
                         echomult "Error occurred in permission and ownership assignment of key file."
                         exit 1
@@ -1174,7 +1174,7 @@
             generate_keys "reputationd"
 
             echo "{ \"xrpl\": { \"secret\": \"$reputationd_xrpl_secret\" } }" >"$reputationd_key_file_path" &&
-                chmod 400 "$reputationd_key_file_path" &&
+                chmod 440 "$reputationd_key_file_path" &&
                 chown $REPUTATIOND_USER: $reputationd_key_file_path &&
                 echomult "Key file saved successfully at $reputationd_key_file_path" || {
                 echomult "Error occurred in permission and ownership assignment of key file."
@@ -1413,7 +1413,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
             # Setting the ownership of the REPUTATIOND_USER's home to REPUTATIOND_USER expilcity.
             # NOTE : There can be user id mismatch, as we do not delete REPUTATIOND_USER's home in the uninstallation even though the user is removed.
-            chown -R "$REPUTATIOND_USER":"$REPUTATIOND_USER" /home/$REPUTATIOND_USER
+            chown -R "$REPUTATIOND_USER":"$SASHIADMIN_GROUP" /home/$REPUTATIOND_USER
 
             reputationd_secret_path=$(jq -r '.reputation.secretPath' "$REPUTATIOND_CONFIG")
             chown "$REPUTATIOND_USER": $reputationd_secret_path
@@ -2083,7 +2083,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
             # Setting the ownership of the MB_XRPL_USER's home to MB_XRPL_USER expilcity.
             # NOTE : There can be user id mismatch, as we do not delete MB_XRPL_USER's home in the uninstallation even though the user is removed.
-            chown -R "$MB_XRPL_USER":"$MB_XRPL_USER" /home/$MB_XRPL_USER
+            chown -R "$MB_XRPL_USER":"$SASHIADMIN_GROUP" /home/$MB_XRPL_USER
         fi
 
         # Check if message board config and sa.cfg exists.
