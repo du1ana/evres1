@@ -2006,7 +2006,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         echomult "configuring evernode reputation and reward system..."
 
         #account generation,
-        if [ ! set_host_reputationd_account ]; then
+        if ! set_host_reputationd_account; then
             echo "error setting up reputationd account."
             return 1;
         fi
