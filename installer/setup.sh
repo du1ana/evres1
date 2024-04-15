@@ -207,7 +207,7 @@
                 \ngovernance - Governance candidate management.
                 \nregkey - Regular key management.
                 \nofferlease - Create Lease offers for the instances.
-                \reputationd - opt-in to the evernode reputation and reward system." &&
+                \nreputationd - opt-in to the evernode reputation and reward system." &&
             exit 1
     else
         [ "$1" != "install" ] && [ "$1" != "transfer" ] && [ "$1" != "deregister" ] &&
@@ -1049,7 +1049,7 @@
 
             if [ "$key_file_path" == "$default_key_filepath" ]; then
                 parent_directory=$(dirname "$key_file_path")
-                chmod -R 500 "$parent_directory" &&
+                chmod -R 550 "$parent_directory" &&
                     chown -R $MB_XRPL_USER: "$parent_directory" || {
                     echomult "Error occurred in permission and ownership assignment of key file directory."
                     exit 1
