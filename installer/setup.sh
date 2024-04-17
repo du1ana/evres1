@@ -2024,6 +2024,23 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         reputationd_user_id=$(id -u "$REPUTATIOND_USER")
         reputationd_user_runtime_dir="/run/user/$reputationd_user_id"
 
+        # Setting the ownership of the REPUTATIOND_USER's home to REPUTATIOND_USER expilcity.
+        # NOTE : There can be user id mismatch, as we do not delete REPUTATIOND_USER's home in the uninstallation even though the user is removed.
+        chown -R "$REPUTATIOND_USER":"$SASHIADMIN_GROUP" $reputationd_user_dir
+
+        # Setup env variable for the reputationd user.
+        echo "
+            export XDG_RUNTIME_DIR=$reputationd_user_runtime_dir" >>"$reputationd_user_dir"/.bashrc
+        echo "Updated reputationd user .bashrc."
+
+        reputationd_user_systemd=""
+        for ((i = 0; i < 30; i++)); do
+            sleep 0.1
+            reputationd_user_systemd=$(sudo -u "$REPUTATIOND_USER" XDG_RUNTIME_DIR="$reputationd_user_runtime_dir" systemctl --user is-system-running 2>/dev/null)
+            [ "$reputationd_user_systemd" == "running" ] && break
+        done
+        [ "$reputationd_user_systemd" != "running" ] && echo "NO_REPUTATIOND_USER_SYSTEMD" && abort
+
         #configure reputationd service
         echomult "Configuring reputationd service"
         ! (sudo -u $REPUTATIOND_USER mkdir -p "$reputationd_user_dir"/.config/systemd/user/) && echo "Message board user systemd folder creation failed" && abort
