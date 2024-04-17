@@ -1409,14 +1409,12 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         # Reputationd
         # Create REPUTATIOND_USER if does not exists..
         if ! grep -q "^$REPUTATIOND_USER:" /etc/passwd; then
-            useradd --shell /usr/sbin/nologin -m $REPUTATIOND_USER
+            useradd --shell /usr/sbin/nologin -m $REPUTATIOND_USER 2>/dev/null
 
             # Setting the ownership of the REPUTATIOND_USER's home to REPUTATIOND_USER expilcity.
             # NOTE : There can be user id mismatch, as we do not delete REPUTATIOND_USER's home in the uninstallation even though the user is removed.
             chown -R "$REPUTATIOND_USER":"$SASHIADMIN_GROUP" /home/$REPUTATIOND_USER
 
-            reputationd_secret_path=$(jq -r '.reputation.secretPath' "$REPUTATIOND_CONFIG")
-            chown "$REPUTATIOND_USER": $reputationd_secret_path
         fi
 
         # Assign reputationd user priviledges.
@@ -1707,6 +1705,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         local max_storage_kbytes=$(jq '.system.max_storage_kbytes' $saconfig)
 
         local mbconfig="$MB_XRPL_CONFIG"
+        #ISSUED
         local cfg_lease_amount=$(jq '.xrpl.leaseAmount' $mbconfig)
         local cfg_rippled_server=$(jq -r '.xrpl.rippledServer' $mbconfig)
         local cfg_extra_txn_fee=$(jq '.xrpl.affordableExtraFee' $mbconfig)
@@ -2002,6 +2001,11 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
     function configure_reputationd_system(){
         # Configure reputationd users and register host.
         echomult "configuring evernode reputation and reward system..."
+
+        if [ -f  "$REPUTATIOND_CONFIG" ] ; then
+            reputationd_secret_path=$(jq -r '.reputation.secretPath' "$REPUTATIOND_CONFIG")
+            chown "$REPUTATIOND_USER": $reputationd_secret_path
+        fi
 
         #account generation,
         if ! set_host_reputationd_account; then
