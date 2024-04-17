@@ -1134,7 +1134,7 @@
 
         if [ "$reputationd_key_file_path" == "$default_reputationd_key_filepath" ]; then
             parent_directory=$(dirname "$reputationd_key_file_path")
-            chmod -R 500 "$parent_directory" &&
+            chmod -R 550 "$parent_directory" &&
                 chown -R $REPUTATIOND_USER: "$parent_directory" || {
                 echomult "Error occurred in permission and ownership assignment of key file directory."
                 return 1
