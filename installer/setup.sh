@@ -1431,9 +1431,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         ! mkdir -p $REPUTATIOND_DATA && echo "Could not create '$REPUTATIOND_DATA'. Make sure you are running as sudo." && exit 1
         # Change ownership to reputationd user.
         chown -R "$REPUTATIOND_USER":"$REPUTATIOND_USER" $REPUTATIOND_DATA
-        echo "would you like to opt-in to the evernode reputation and reward system?"
-        read -p "Type 'yes' to opt-in: " confirmation </dev/tty
-        [ "$confirmation" != "yes" ] && echo "Cancelled from opting-in evernode reputation and reward system." && exit 0
+        ! confirm "Would you like to opt-in to the Evernode reputation and reward system?" && echo "Cancelled from opting-in Evernode reputation and reward system." && exit 0
         
         configure_reputationd_system
         if [ ! $? -eq 0 ]; then
@@ -2062,6 +2060,15 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         # This service needs to be restarted whenever reputation.cfg or secret.cfg is changed.
         sudo -u "$REPUTATIOND_USER" XDG_RUNTIME_DIR="$reputationd_user_runtime_dir" systemctl --user enable $REPUTATIOND_SERVICE
         # We only enable this service. It'll be started after pending reboot checks at the bottom of this script.
+
+
+        # If there's no pending reboot, start the reputationd services now. Otherwise
+        # they'll get started at next startup.
+        if [ ! -f /run/reboot-required.pkgs ] || [ ! -n "$(grep sashimono /run/reboot-required.pkgs)" ]; then
+            echo "Starting the reputationd service."
+
+            sudo -u "$REPUTATIOND_USER" XDG_RUNTIME_DIR="$reputationd_user_runtime_dir" systemctl --user restart $REPUTATIOND_SERVICE
+        fi
 
         echo "Opted-in to the evernode reputation and reward system."
     }
