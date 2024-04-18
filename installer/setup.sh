@@ -98,6 +98,7 @@
     export MIN_OPERATIONAL_COST_PER_MONTH=5
     # 3 Month minimum operational duration is considered.
     export MIN_OPERATIONAL_DURATION=3
+    export MIN_REPUTATION_COST_PER_MONTH=7 
 
     #export NETWORK="${NETWORK:-mainnet}"
     export NETWORK="${NETWORK:-devnet}"
@@ -2028,14 +2029,13 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         \nNOTE: It is your responsibility to safeguard/backup this file in a secure manner.
         \nIf you lose it, you will not be able to access any funds in your Host account. NO ONE else can recover it.
         \n\nThis is the account that will represent this host on the Evernode host registry. You need to load up the account with following funds in order to continue with the installation."
-        #TODO
-        #local min_xah_requirement=$(echo "$MIN_OPERATIONAL_COST_PER_MONTH*$MIN_OPERATIONAL_DURATION + $min_reserve_requirement" | bc)
-        local min_xah_requirement=50
-        #local min_evr_requirement=$(exec_jshelper compute-evr-requirement $rippled_server $EVERNODE_GOVERNOR_ADDRESS $xrpl_address) && break
-        local min_evr_requirement=50
-        local need_xah=$(echo "$min_xah_requirement > 0" | bc -l)
+        
+        #TODO - min_evr_requirement
+        local min_reputation_xah_requirement=$(echo "$MIN_REPUTATION_COST_PER_MONTH*$MIN_OPERATIONAL_DURATION + 1.2" | bc)
+        local min_evr_requirement=$lease_amount*24*30*$MIN_OPERATIONAL_DURATION
+        local need_xah=$(echo "$min_reputation_xah_requirement > 0" | bc -l)
         local need_evr=$(echo "$min_evr_requirement > 0" | bc -l)
-        [[ "$need_xah" -eq 1 ]] && message="$message\n(*) At least $min_xah_requirement XAH to cover regular transaction fees for the first three months."
+        [[ "$need_xah" -eq 1 ]] && message="$message\n(*) At least $min_reputation_xah_requirement XAH to cover regular transaction fees for the first three months."
         [[ "$need_evr" -eq 1 ]] && message="$message\n(*) At least $min_evr_requirement EVR to cover Evernode registration."
 
         message="$message\n\nYou can scan the following QR code in your wallet app to send funds based on the account condition:\n"
@@ -2046,15 +2046,15 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
         ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN new $reputationd_xrpl_address $reputationd_key_file_path && echo "error creating configs" && exit 1
 
-        echomult "To set up your reputationd host account, ensure a deposit of $min_xah_requirement XAH to cover the regular transaction fees for the first three months."
+        echomult "To set up your reputationd host account, ensure a deposit of $min_reputation_xah_requirement XAH to cover the regular transaction fees for the first three months."
         echomult "\nChecking the account condition...\nWaiting for funds"
 
-        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds NATIVE $min_xah_requirement && echo "error retrieving funds" && exit 1
+        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds NATIVE $min_reputation_xah_requirement && echo "error retrieving funds" && exit 1
 
         ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN prepare && echo "error preparing account"  && exit 1
 
         echomult "\n\nIn order to register in reputation and reward system you need to have $min_evr_requirement EVR balance in your host account. Please deposit the required registration fee in EVRs.
-        \nYou can scan the provided QR code in your wallet app to send funds:"
+        \nYou can scan the provided QR code in your wallet app to send funds\nWaiting for funds:"
         ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds ISSUED $min_evr_requirement && echo "error retrieving funds" && exit 1
 
         # Setup env variable for the reputationd user.
