@@ -2035,27 +2035,27 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
         generate_qrcode "$reputationd_xrpl_address"
 
-        if [[ "$need_xah" -eq 1 ]]; then
-            echomult "\nChecking the account condition..."
-            echomult "To set up your reputationd host account, ensure a deposit of $min_xah_requirement XAH to cover the regular transaction fees for the first three months."
+        # if [[ "$need_xah" -eq 1 ]]; then
+        #     echomult "\nChecking the account condition..."
+        #     echomult "To set up your reputationd host account, ensure a deposit of $min_xah_requirement XAH to cover the regular transaction fees for the first three months."
 
-            while true; do
-                wait_call "exec_jshelper check-balance $rippled_server $EVERNODE_GOVERNOR_ADDRESS $reputationd_xrpl_address NATIVE $min_xah_requirement" "[OUTPUT] XAH balance is there in your host account." &&
-                    break
-                confirm "\nDo you want to re-check the balance?\nPressing 'n' would terminate the installation." || exit 1
-            done
-        fi
+        #     while true; do
+        #         wait_call "exec_jshelper check-balance $rippled_server $EVERNODE_GOVERNOR_ADDRESS $reputationd_xrpl_address NATIVE $min_xah_requirement" "[OUTPUT] XAH balance is there in your host account." &&
+        #             break
+        #         confirm "\nDo you want to re-check the balance?\nPressing 'n' would terminate the installation." || exit 1
+        #     done
+        # fi
 
-        if [[ "$need_evr" -eq 1 ]]; then
-            echomult "\n\nIn order to register in Evernode you need to have $min_evr_requirement EVR balance in your host account. Please deposit the required registration fee in EVRs.
-        \nYou can scan the provided QR code in your wallet app to send funds:"
+        # if [[ "$need_evr" -eq 1 ]]; then
+        #     echomult "\n\nIn order to register in Evernode you need to have $min_evr_requirement EVR balance in your host account. Please deposit the required registration fee in EVRs.
+        # \nYou can scan the provided QR code in your wallet app to send funds:"
 
-            while true; do
-                wait_call "exec_jshelper check-balance $rippled_server $EVERNODE_GOVERNOR_ADDRESS $reputationd_xrpl_address ISSUED $min_evr_requirement" "[OUTPUT] EVR balance is there in your host account." &&
-                    break
-                confirm "\nDo you want to re-check the balance?\nPressing 'n' would terminate the installation." || exit 1
-            done
-        fi
+        #     while true; do
+        #         wait_call "exec_jshelper check-balance $rippled_server $EVERNODE_GOVERNOR_ADDRESS $reputationd_xrpl_address ISSUED $min_evr_requirement" "[OUTPUT] EVR balance is there in your host account." &&
+        #             break
+        #         confirm "\nDo you want to re-check the balance?\nPressing 'n' would terminate the installation." || exit 1
+        #     done
+        # fi
 
         #new, wait-for-funds, prepare, wait-for-funds wait_call
         ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN new $reputationd_xrpl_address $reputationd_key_file_path && echo "error creating configs" && exit 1
