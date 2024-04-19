@@ -27,9 +27,13 @@
     reputationd_script_dir=$(dirname "$(realpath "$0")")
     root_user="root"
 
-    repo_owner="EvernodeXRPL"
-    repo_name="evernode-test-resources"
+    repo_owner="du1ana"
+    repo_name="evres1"
     desired_branch="main"
+
+    # repo_owner="EvernodeXRPL"
+    # repo_name="evernode-test-resources"
+    # desired_branch="main"
 
     latest_version_endpoint="https://api.github.com/repos/$repo_owner/$repo_name/releases/latest"
     latest_version_data=$(curl -s "$latest_version_endpoint")
@@ -1428,7 +1432,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         ! mkdir -p $REPUTATIOND_DATA && echo "Could not create '$REPUTATIOND_DATA'. Make sure you are running as sudo." && exit 1
         # Change ownership to reputationd user.
         chown -R "$REPUTATIOND_USER":"$REPUTATIOND_USER" $REPUTATIOND_DATA
-        ! confirm "\nWould you like to opt-in to the Evernode reputation and reward system?" && echomult "Cancelled from opting-in Evernode reputation and reward system.\nYou can opt-in later by using \'evernode reputationd\' command" && exit 0
+        ! confirm "\nWould you like to opt-in to the Evernode reputation and reward system?" && echomult "Cancelled from opting-in Evernode reputation and reward system.\nYou can opt-in later by using 'evernode reputationd' command" && exit 0
         
         configure_reputationd_system
         if [ ! $? -eq 0 ]; then
