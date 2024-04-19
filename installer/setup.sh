@@ -195,7 +195,7 @@
             exit 1
 
         [ "$1" != "uninstall" ] && [ "$1" != "status" ] && [ "$1" != "list" ] && [ "$1" != "update" ] && [ "$1" != "log" ] && [ "$1" != "applyssl" ] && [ "$1" != "transfer" ] && [ "$1" != "config" ] && [ "$1" != "delete" ] && [ "$1" != "governance" ] && [ "$1" != "regkey" ] && [ "$1" != "offerlease" ] && [ "$1" != "reputationd" ] &&
-            echomult "$evernode host management tool.
+            echomult "$evernode host management tool
                 \nYour have $evernode installed on your machine.
                 \nSupported commands:
                 \nstatus - View $evernode registration info.
@@ -2033,7 +2033,8 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         
         #TODO - min_evr_requirement $lease_amount
         local min_reputation_xah_requirement=$(echo "$MIN_REPUTATION_COST_PER_MONTH*$MIN_OPERATIONAL_DURATION + 1.2" | bc)
-        local min_evr_requirement=$((1*24*30*$MIN_OPERATIONAL_DURATION))
+        local lease_amount=$(jq ".xrpl.leaseAmount | select( . != null )" "$MB_XRPL_CONFIG")
+        local min_evr_requirement=$(($lease_amount*24*30*$MIN_OPERATIONAL_DURATION))
         local need_xah=$(echo "$min_reputation_xah_requirement > 0" | bc -l)
         local need_evr=$(echo "$min_evr_requirement > 0" | bc -l)
         [[ "$need_xah" -eq 1 ]] && message="$message\n(*) At least $min_reputation_xah_requirement XAH to cover regular transaction fees for the first three months."
