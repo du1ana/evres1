@@ -191,7 +191,7 @@
             exit 1
 
         [ "$1" != "uninstall" ] && [ "$1" != "status" ] && [ "$1" != "list" ] && [ "$1" != "update" ] && [ "$1" != "log" ] && [ "$1" != "applyssl" ] && [ "$1" != "transfer" ] && [ "$1" != "config" ] && [ "$1" != "delete" ] && [ "$1" != "governance" ] && [ "$1" != "regkey" ] && [ "$1" != "offerlease" ] && [ "$1" != "reputationd" ] &&
-            echomult "$evernode host management tool
+            echomult "$evernode host management tool.
                 \nYour have $evernode installed on your machine.
                 \nSupported commands:
                 \nstatus - View $evernode registration info.
