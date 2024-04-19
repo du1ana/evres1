@@ -27,10 +27,8 @@
     reputationd_script_dir=$(dirname "$(realpath "$0")")
     root_user="root"
 
-    repo_owner="du1ana"
-    #repo_owner="EvernodeXRPL"
-    repo_name="evres1"
-    #repo_name="evernode-test-resources"
+    repo_owner="EvernodeXRPL"
+    repo_name="evernode-test-resources"
     desired_branch="main"
 
     latest_version_endpoint="https://api.github.com/repos/$repo_owner/$repo_name/releases/latest"
@@ -1706,7 +1704,6 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         local max_storage_kbytes=$(jq '.system.max_storage_kbytes' $saconfig)
 
         local mbconfig="$MB_XRPL_CONFIG"
-        #ISSUED
         local cfg_lease_amount=$(jq '.xrpl.leaseAmount' $mbconfig)
         local cfg_rippled_server=$(jq -r '.xrpl.rippledServer' $mbconfig)
         local cfg_extra_txn_fee=$(jq '.xrpl.affordableExtraFee' $mbconfig)
@@ -2030,9 +2027,9 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         \nIf you lose it, you will not be able to access any funds in your Host account. NO ONE else can recover it.
         \n\nThis is the account that will represent this host on the Evernode host registry. You need to load up the account with following funds in order to continue with the installation."
         
-        #TODO - min_evr_requirement
+        #TODO - min_evr_requirement $lease_amount
         local min_reputation_xah_requirement=$(echo "$MIN_REPUTATION_COST_PER_MONTH*$MIN_OPERATIONAL_DURATION + 1.2" | bc)
-        local min_evr_requirement=$lease_amount*24*30*$MIN_OPERATIONAL_DURATION
+        local min_evr_requirement=$((1*24*30*$MIN_OPERATIONAL_DURATION))
         local need_xah=$(echo "$min_reputation_xah_requirement > 0" | bc -l)
         local need_evr=$(echo "$min_evr_requirement > 0" | bc -l)
         [[ "$need_xah" -eq 1 ]] && message="$message\n(*) At least $min_reputation_xah_requirement XAH to cover regular transaction fees for the first three months."
