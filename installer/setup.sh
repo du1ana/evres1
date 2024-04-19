@@ -96,7 +96,7 @@
     export MIN_OPERATIONAL_COST_PER_MONTH=5
     # 3 Month minimum operational duration is considered.
     export MIN_OPERATIONAL_DURATION=3
-    export MIN_REPUTATION_COST_PER_MONTH=7 
+    export MIN_REPUTATION_COST_PER_MONTH=7
 
     #export NETWORK="${NETWORK:-mainnet}"
     export NETWORK="${NETWORK:-devnet}"
@@ -2127,6 +2127,9 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         init_setup_helpers
 
         download_public_config && set_environment_configs
+
+        # Setting up Sashimono admin group.
+        ! grep -q $SASHIADMIN_GROUP /etc/group && ! groupadd $SASHIADMIN_GROUP && echo "$SASHIADMIN_GROUP group creation failed." && abort
 
         # Create MB_XRPL_USER as we require that user for secret key ownership management.
         if ! grep -q "^$MB_XRPL_USER:" /etc/passwd; then
