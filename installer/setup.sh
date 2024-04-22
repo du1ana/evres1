@@ -1533,7 +1533,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
             echo "Message board log:"
             sudo -u sashimbxrpl bash -c journalctl --user -u sashimono-mb-xrpl | tail -n 200
             echo ""
-            if $reputationd_enabled; then 
+            if [[ "$reputationd_enabled" == "true" ]] ; then
                 echo "Reputationd log:"
                 sudo -u sashireputationd bash -c journalctl --user -u sashimono-reputationd | tail -n 200
             fi
@@ -1604,7 +1604,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         local reputationd_user_runtime_dir="/run/user/$reputationd_user_id"
         local sashimono_reputationd_status=$(sudo -u "$REPUTATIOND_USER" XDG_RUNTIME_DIR="$reputationd_user_runtime_dir" systemctl --user is-active $REPUTATIOND_SERVICE)    
         echo "Sashimono reputationd status: $sashimono_reputationd_status"
-        if $sashimono_reputationd_status == "active" && $reputationd_enabled == true; then
+        if [[ $sashimono_reputationd_status == "active" && $reputationd_enabled == true ]]; then
             echo -e "\nYour reputationd account details are stored in $REPUTATIOND_DATA/reputation.cfg"
         fi
     }
