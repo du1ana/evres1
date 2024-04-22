@@ -1605,7 +1605,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         local reputationd_user_runtime_dir="/run/user/$reputationd_user_id"
         local sashimono_reputationd_status=$(sudo -u "$REPUTATIOND_USER" XDG_RUNTIME_DIR="$reputationd_user_runtime_dir" systemctl --user is-active $REPUTATIOND_SERVICE)    
         echo "\nSashimono reputationd status: $sashimono_reputationd_status"
-        if [ "$sashimono_reputationd_status" == "active" && $reputationd_enabled == true ]
+        if [ "$sashimono_reputationd_status" == "active" && $reputationd_enabled == true ]; then
             echo -e "\nYour reputationd account details are stored in $REPUTATIOND_DATA/reputation.cfg"
         else
             echo "Not opted-in for Reputation and reward system."
