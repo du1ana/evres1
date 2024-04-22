@@ -1,5 +1,5 @@
-#./sashi_release.sh v3.4.50 main kavindu45
-#curl -fsSL https://github.com/du1ana/evres1/releases/download/sashi_v3.4.50/setup.sh | cat | sudo SKIP_SYSREQ=1 NO_DOMAIN=1 NETWORK=devnet bash -s install
+#./sashi_release.sh v3.4.51 main kavindu46
+#curl -fsSL https://github.com/du1ana/evres1/releases/download/sashi_v3.4.51/setup.sh | cat | sudo SKIP_SYSREQ=1 NO_DOMAIN=1 NETWORK=devnet bash -s install
 #!/bin/bash
 
 # Define an array of source and destination file paths

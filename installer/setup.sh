@@ -1510,7 +1510,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
     }
 
     function create_log() {
-        if  sudo -u $REPUTATIOND_USER test -r "$reputationd_user_dir/.config/systemd/user/$REPUTATIOND_SERVICE.service"; then
+        if sudo -u $REPUTATIOND_USER test -r "$reputationd_user_dir/.config/systemd/user/$REPUTATIOND_SERVICE.service"; then
             reputationd_enabled=true
         else
             reputationd_enabled=false
@@ -1536,8 +1536,6 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
             if $reputationd_enabled; then 
                 echo "Reputationd log:"
                 sudo -u sashireputationd bash -c journalctl --user -u sashimono-reputationd | tail -n 200
-            else
-                echo "Not opted-in for Reputation and reward system."
             fi
 
         } >"$tempfile" 2>&1
@@ -1596,7 +1594,8 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         echo "Sashimono agent status: $sashimono_agent_status"
         echo "Sashimono message board status: $sashimono_mb_xrpl_status"
         echo -e "\nYour registration account details are stored in $MB_XRPL_DATA/mb-xrpl.cfg"
-        if [sudo -u $REPUTATIOND_USER -f "$reputationd_user_dir"/.config/systemd/user/$REPUTATIOND_SERVICE.service ]; then
+        echo ""
+        if sudo -u $REPUTATIOND_USER test -r "$reputationd_user_dir/.config/systemd/user/$REPUTATIOND_SERVICE.service"; then
             reputationd_enabled=true
         else
             reputationd_enabled=false
@@ -1604,11 +1603,9 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         local reputationd_user_id=$(id -u "$REPUTATIOND_USER")
         local reputationd_user_runtime_dir="/run/user/$reputationd_user_id"
         local sashimono_reputationd_status=$(sudo -u "$REPUTATIOND_USER" XDG_RUNTIME_DIR="$reputationd_user_runtime_dir" systemctl --user is-active $REPUTATIOND_SERVICE)    
-        echo "\nSashimono reputationd status: $sashimono_reputationd_status"
-        if [ "$sashimono_reputationd_status" == "active" && $reputationd_enabled == true ]; then
+        echo "Sashimono reputationd status: $sashimono_reputationd_status"
+        if $sashimono_reputationd_status == "active" && $reputationd_enabled == true; then
             echo -e "\nYour reputationd account details are stored in $REPUTATIOND_DATA/reputation.cfg"
-        else
-            echo "Not opted-in for Reputation and reward system."
         fi
     }
 
