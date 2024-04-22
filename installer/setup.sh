@@ -27,9 +27,9 @@
     reputationd_script_dir=$(dirname "$(realpath "$0")")
     root_user="root"
 
-    repo_owner="du1ana"
-    repo_name="evres1"
-    desired_branch="main"
+    repo_owner="du1ana" 
+    repo_name="evres1" 
+    desired_branch="main" 
 
     # repo_owner="EvernodeXRPL"
     # repo_name="evernode-test-resources"
@@ -1108,6 +1108,7 @@
             fi
         fi
     }
+
     function set_host_reputationd_account() {
 
         confirm "\nDo you want to use the default key file path ${default_reputationd_key_filepath} to save the new account key?" && reputationd_key_file_path=$default_reputationd_key_filepath
@@ -1185,6 +1186,7 @@
             }
         fi
     }
+
     function prepare_host() {
         ([ -z $rippled_server ] || [ -z $xrpl_address ] || [ -z $key_file_path ] || [ -z $xrpl_secret ] || [ -z $inetaddr ]) && echo "No params specified." && return 1
 
@@ -1382,6 +1384,24 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
             done
         fi
 
+        # Reputationd
+        # Create REPUTATIOND_USER if does not exists..
+        if ! grep -q "^$REPUTATIOND_USER:" /etc/passwd; then
+            useradd --shell /usr/sbin/nologin -m $REPUTATIOND_USER 2>/dev/null
+
+            # Setting the ownership of the REPUTATIOND_USER's home to REPUTATIOND_USER expilcity.
+            # NOTE : There can be user id mismatch, as we do not delete REPUTATIOND_USER's home in the uninstallation even though the user is removed.
+            chown -R "$REPUTATIOND_USER":"$SASHIADMIN_GROUP" /home/$REPUTATIOND_USER
+
+        fi
+
+        # Assign reputationd user priviledges.
+        if ! id -nG "$REPUTATIOND_USER" | grep -qw "$SASHIADMIN_GROUP"; then
+            usermod --lock $REPUTATIOND_USER
+            usermod -a -G $SASHIADMIN_GROUP $REPUTATIOND_USER
+            loginctl enable-linger $REPUTATIOND_USER # Enable lingering to support service installation.
+        fi
+
         # Filter logs with STAGE prefix and ommit the prefix when echoing.
         # If STAGE log contains -p arg, move the cursor to previous log line and overwrite the log.
         ! UPGRADE=$upgrade EVERNODE_REGISTRY_ADDRESS=$registry_address ./sashimono-install.sh $inetaddr $init_peer_port $init_user_port $countrycode $alloc_instcount \
@@ -1408,30 +1428,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         
         # Write the verison timestamp to a file for later updated version comparison.
         echo $installer_version_timestamp >$SASHIMONO_DATA/$installer_version_timestamp_file
-        
-        # Reputationd
-        # Create REPUTATIOND_USER if does not exists..
-        if ! grep -q "^$REPUTATIOND_USER:" /etc/passwd; then
-            useradd --shell /usr/sbin/nologin -m $REPUTATIOND_USER 2>/dev/null
 
-            # Setting the ownership of the REPUTATIOND_USER's home to REPUTATIOND_USER expilcity.
-            # NOTE : There can be user id mismatch, as we do not delete REPUTATIOND_USER's home in the uninstallation even though the user is removed.
-            chown -R "$REPUTATIOND_USER":"$SASHIADMIN_GROUP" /home/$REPUTATIOND_USER
-
-        fi
-
-        # Assign reputationd user priviledges.
-        if ! id -nG "$REPUTATIOND_USER" | grep -qw "$SASHIADMIN_GROUP"; then
-            usermod --lock $REPUTATIOND_USER
-            usermod -a -G $SASHIADMIN_GROUP $REPUTATIOND_USER
-            loginctl enable-linger $REPUTATIOND_USER # Enable lingering to support service installation.
-        fi
-
-        # First create the folder from root and then transfer ownership to the user
-        # since the folder is created in /etc/sashimono directory.
-        ! mkdir -p $REPUTATIOND_DATA && echo "Could not create '$REPUTATIOND_DATA'. Make sure you are running as sudo." && exit 1
-        # Change ownership to reputationd user.
-        chown -R "$REPUTATIOND_USER":"$REPUTATIOND_USER" $REPUTATIOND_DATA
         ! confirm "\nWould you like to opt-in to the Evernode reputation and reward system?" && echomult "Cancelled from opting-in Evernode reputation and reward system.\nYou can opt-in later by using 'evernode reputationd' command" && exit 0
         
         configure_reputationd_system
@@ -1513,6 +1510,11 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
     }
 
     function create_log() {
+        if [sudo -u $REPUTATIOND_USER -f "$reputationd_user_dir"/.config/systemd/user/$REPUTATIOND_SERVICE.service ]; then
+            reputationd_enabled=true
+        else
+            reputationd_enabled=false
+        fi
         tempfile=$(mktemp /tmp/evernode.XXXXXXXXX.log)
         {
             echo "System:"
@@ -1530,6 +1532,13 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
             echo ""
             echo "Message board log:"
             sudo -u sashimbxrpl bash -c journalctl --user -u sashimono-mb-xrpl | tail -n 200
+            if $reputationd_enabled; then 
+                echo "Reputationd log:"
+                sudo -u sashireputationd bash -c journalctl --user -u sashimono-reputationd | tail -n 200
+            else
+                echo "not opted-in for Reputation and reward system."
+            fi
+
         } >"$tempfile" 2>&1
         echo "Evernode log saved to $tempfile"
     }
@@ -1585,7 +1594,13 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         local sashimono_mb_xrpl_status=$(sudo -u "$MB_XRPL_USER" XDG_RUNTIME_DIR="$mb_user_runtime_dir" systemctl --user is-active $MB_XRPL_SERVICE)
         echo "Sashimono agent status: $sashimono_agent_status"
         echo "Sashimono message board status: $sashimono_mb_xrpl_status"
-        echo -e "\nYour account details are stored in $MB_XRPL_DATA/mb-xrpl.cfg"
+        echo -e "\nYour registration account details are stored in $MB_XRPL_DATA/mb-xrpl.cfg"
+
+        local reputationd_user_id=$(id -u "$REPUTATIOND_USER")
+        local reputationd_user_runtime_dir="/run/user/$reputationd_user_id"
+        local sashimono_reputationd_status=$(sudo -u "$REPUTATIOND_USER" XDG_RUNTIME_DIR="$reputationd_user_runtime_dir" systemctl --user is-active $REPUTATIOND_SERVICE)    
+        echo "Sashimono reputationd status: $sashimono_reputationd_status"
+        echo -e "\nYour reputationd account details are stored in $REPUTATIOND_DATA/reputation.cfg"
     }
 
     function get_country_code() {
@@ -2031,14 +2046,14 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         \nIf you lose it, you will not be able to access any funds in your Host account. NO ONE else can recover it.
         \n\nThis is the account that will represent this host on the Evernode host registry. You need to load up the account with following funds in order to continue with the installation."
         
-        #TODO - min_evr_requirement $lease_amount
         local min_reputation_xah_requirement=$(echo "$MIN_REPUTATION_COST_PER_MONTH*$MIN_OPERATIONAL_DURATION + 1.2" | bc)
         local lease_amount=$(jq ".xrpl.leaseAmount | select( . != null )" "$MB_XRPL_CONFIG")
-        local min_evr_requirement=$(($lease_amount*24*30*$MIN_OPERATIONAL_DURATION))
+        local min_reputation_evr_requirement=$(echo "$lease_amount*24*30*$MIN_OPERATIONAL_DURATION" | bc)
+
         local need_xah=$(echo "$min_reputation_xah_requirement > 0" | bc -l)
-        local need_evr=$(echo "$min_evr_requirement > 0" | bc -l)
+        local need_evr=$(echo "$min_reputation_evr_requirement > 0" | bc -l)
         [[ "$need_xah" -eq 1 ]] && message="$message\n(*) At least $min_reputation_xah_requirement XAH to cover regular transaction fees for the first three months."
-        [[ "$need_evr" -eq 1 ]] && message="$message\n(*) At least $min_evr_requirement EVR to cover Evernode registration."
+        [[ "$need_evr" -eq 1 ]] && message="$message\n(*) At least $min_reputation_evr_requirement EVR to cover Evernode registration."
 
         message="$message\n\nYou can scan the following QR code in your wallet app to send funds based on the account condition:\n"
 
@@ -2049,15 +2064,15 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN new $reputationd_xrpl_address $reputationd_key_file_path && echo "error creating configs" && exit 1
 
         echomult "To set up your reputationd host account, ensure a deposit of $min_reputation_xah_requirement XAH to cover the regular transaction fees for the first three months."
-        echomult "\nChecking the account condition...\nWaiting for funds"
+        echomult "\nChecking the account condition.\n\nWaiting for funds..."
 
         ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds NATIVE $min_reputation_xah_requirement && echo "error retrieving funds" && exit 1
 
         ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN prepare && echo "error preparing account"  && exit 1
 
-        echomult "\n\nIn order to register in reputation and reward system you need to have $min_evr_requirement EVR balance in your host account. Please deposit the required registration fee in EVRs.
-        \nYou can scan the provided QR code in your wallet app to send funds\nWaiting for funds:"
-        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds ISSUED $min_evr_requirement && echo "error retrieving funds" && exit 1
+        echomult "\n\nIn order to register in reputation and reward system you need to have $min_reputation_evr_requirement EVR balance in your host account. Please deposit the required registration fee in EVRs.
+        \nYou can scan the provided QR code in your wallet app to send funds.\n\nWaiting for funds..."
+        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds ISSUED $min_reputation_evr_requirement && echo "error retrieving funds" && exit 1
 
         # Setup env variable for the reputationd user.
         echo "
@@ -2089,7 +2104,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
             RestartSec=5
             [Install]
             WantedBy=default.target" | sudo -u $REPUTATIOND_USER tee "$reputationd_user_dir"/.config/systemd/user/$REPUTATIOND_SERVICE.service >/dev/null
-
+        #
         # This service needs to be restarted whenever reputation.cfg or secret.cfg is changed.
         sudo -u "$REPUTATIOND_USER" XDG_RUNTIME_DIR="$reputationd_user_runtime_dir" systemctl --user enable $REPUTATIOND_SERVICE
         # We only enable this service. It'll be started after pending reboot checks at the bottom of this script.
