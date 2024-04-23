@@ -1536,8 +1536,9 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
             if [[ "$reputationd_enabled" == "true" ]] ; then
                 echo "Reputationd log:"
                 sudo -u sashireputationd bash -c journalctl --user -u sashimono-reputationd | tail -n 200
+            else
+                echo "Reputation and reward system is not enabled."
             fi
-
         } >"$tempfile" 2>&1
         echo "Evernode log saved to $tempfile"
     }
@@ -1606,6 +1607,8 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         echo "Sashimono reputationd status: $sashimono_reputationd_status"
         if [[ $sashimono_reputationd_status == "active" && $reputationd_enabled == true ]]; then
             echo -e "\nYour reputationd account details are stored in $REPUTATIOND_DATA/reputation.cfg"
+        else
+            echo -e "\nReputation and reward system is not enabled."
         fi
     }
 
