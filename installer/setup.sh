@@ -26,11 +26,9 @@
     log_dir=/tmp/evernode
     reputationd_script_dir=$(dirname "$(realpath "$0")")
     root_user="root"
-
     repo_owner="du1ana" 
     repo_name="evres1" 
     desired_branch="main" 
-
     # repo_owner="EvernodeXRPL"
     # repo_name="evernode-test-resources"
     # desired_branch="main"
@@ -210,7 +208,7 @@
                 \ngovernance - Governance candidate management.
                 \nregkey - Regular key management.
                 \nofferlease - Create Lease offers for the instances.
-                \nreputationd - opt-in to the evernode reputation and reward system." &&
+                \nreputationd - opt-in / opt-out for the Evernode reputation for reward distribution." &&
             exit 1
     else
         [ "$1" != "install" ] && [ "$1" != "transfer" ] && [ "$1" != "deregister" ] &&
@@ -622,8 +620,8 @@
 
         # Uncomment this if we want the user to manually change the auto-detected country code.
         # if [ -n "$countrycode" ] && ! confirm "Based on the internet address '$inetaddr' we have detected that your country
-                                                #                                         code is '$countrycode'. Do you want to specify a different country code" ; then
-            #     return 0
+        #                                         code is '$countrycode'. Do you want to specify a different country code" ; then
+        #     return 0
         # fi
         # countrycode=""
 
@@ -1122,7 +1120,6 @@
                 root_directory="/root"
                 canonicalized_root=$(realpath "$root_directory")
 
-
                 if [[ "$canonicalized_directory" == "$canonicalized_root"* ]]; then
                     echo "Key should not be located in /root directory." && continue
                 fi
@@ -1319,7 +1316,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
         local service_removed=false
 
-        # Remove Xahau message board service if exists.
+        # Remove auto updater service if exists.
         local service_path="/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer"
         if [ -f $service_path ]; then
             echo "Removing Evernode auto update timer..."
@@ -1425,13 +1422,13 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         set +o pipefail
 
         rm -r $tmp
-        
+
         # Write the verison timestamp to a file for later updated version comparison.
         echo $installer_version_timestamp >$SASHIMONO_DATA/$installer_version_timestamp_file
 
         ! confirm "\nWould you like to opt-in to the Evernode reputation and reward system?" && echomult "Cancelled from opting-in Evernode reputation and reward system.\nYou can opt-in later by using 'evernode reputationd' command" && exit 0
-        
-        configure_reputationd_system
+
+        configure_reputationd
         if [ ! $? -eq 0 ]; then
             echo "error configuring reputationd system."
             return 1
@@ -1510,7 +1507,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
     }
 
     function create_log() {
-        if sudo -u $REPUTATIOND_USER test -r "$reputationd_user_dir/.config/systemd/user/$REPUTATIOND_SERVICE.service"; then
+        if sudo -u "$REPUTATIOND_USER" [ -f "/home/$REPUTATIOND_USER/.config/systemd/user/$REPUTATIOND_SERVICE.service" ]; then
             reputationd_enabled=true
         else
             reputationd_enabled=false
@@ -1533,7 +1530,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
             echo "Message board log:"
             sudo -u sashimbxrpl bash -c journalctl --user -u sashimono-mb-xrpl | tail -n 200
             echo ""
-            if [[ "$reputationd_enabled" == "true" ]] ; then
+            if [[ "$reputationd_enabled" == "true" ]]; then
                 echo "Reputationd log:"
                 sudo -u sashireputationd bash -c journalctl --user -u sashimono-reputationd | tail -n 200
             else
@@ -1596,19 +1593,17 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         echo "Sashimono message board status: $sashimono_mb_xrpl_status"
         echo -e "\nYour registration account details are stored in $MB_XRPL_DATA/mb-xrpl.cfg"
         echo ""
-        if sudo -u $REPUTATIOND_USER test -r "$reputationd_user_dir/.config/systemd/user/$REPUTATIOND_SERVICE.service"; then
+        if sudo -u "$REPUTATIOND_USER" [ -f "/home/$REPUTATIOND_USER/.config/systemd/user/$REPUTATIOND_SERVICE.service" ]; then
             reputationd_enabled=true
         else
             reputationd_enabled=false
         fi
         local reputationd_user_id=$(id -u "$REPUTATIOND_USER")
         local reputationd_user_runtime_dir="/run/user/$reputationd_user_id"
-        local sashimono_reputationd_status=$(sudo -u "$REPUTATIOND_USER" XDG_RUNTIME_DIR="$reputationd_user_runtime_dir" systemctl --user is-active $REPUTATIOND_SERVICE)    
-        echo "Sashimono reputationd status: $sashimono_reputationd_status"
-        if [[ $sashimono_reputationd_status == "active" && $reputationd_enabled == true ]]; then
+        local evernode_reputationd_status=$(sudo -u "$REPUTATIOND_USER" XDG_RUNTIME_DIR="$reputationd_user_runtime_dir" systemctl --user is-active $REPUTATIOND_SERVICE)
+        echo "Evernode reputationd status: $evernode_reputationd_status"
+        if [[ $reputationd_enabled == true ]]; then
             echo -e "\nYour reputationd account details are stored in $REPUTATIOND_DATA/reputation.cfg"
-        else
-            echo -e "\nReputation and reward system is not enabled."
         fi
     }
 
@@ -2024,11 +2019,13 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         [ $has_error == 0 ] && echo "Lease offer creation for minted lease tokens was completed."
     }
 
-    function configure_reputationd_system(){
-        # Configure reputationd users and register host.
-        echomult "configuring evernode reputation and reward system..."
+    function configure_reputationd() {
+        [ "$EUID" -ne 0 ] && echo "Please run with root privileges (sudo)." && exit 1
 
-        if [ -f  "$REPUTATIOND_CONFIG" ] ; then
+        # Configure reputationd users and register host.
+        echomult "configuring Evernode reputation for reward distribution..."
+
+        if [ -f "$REPUTATIOND_CONFIG" ]; then
             reputationd_secret_path=$(jq -r '.reputation.secretPath' "$REPUTATIOND_CONFIG")
             chown "$REPUTATIOND_USER": $reputationd_secret_path
         fi
@@ -2036,7 +2033,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         #account generation,
         if ! set_host_reputationd_account; then
             echo "error setting up reputationd account."
-            return 1;
+            return 1
         fi
 
         reputationd_user_dir=/home/"$REPUTATIOND_USER"
@@ -2054,7 +2051,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         \nNOTE: It is your responsibility to safeguard/backup this file in a secure manner.
         \nIf you lose it, you will not be able to access any funds in your Host account. NO ONE else can recover it.
         \n\nThis is the account that will represent this host on the Evernode host registry. You need to load up the account with following funds in order to continue with the installation."
-        
+
         local min_reputation_xah_requirement=$(echo "$MIN_REPUTATION_COST_PER_MONTH*$MIN_OPERATIONAL_DURATION + 1.2" | bc)
         local lease_amount=$(jq ".xrpl.leaseAmount | select( . != null )" "$MB_XRPL_CONFIG")
         local min_reputation_evr_requirement=$(echo "$lease_amount*24*30*$MIN_OPERATIONAL_DURATION" | bc)
@@ -2074,14 +2071,21 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
         echomult "To set up your reputationd host account, ensure a deposit of $min_reputation_xah_requirement XAH to cover the regular transaction fees for the first three months."
         echomult "\nChecking the account condition.\n\nWaiting for funds..."
+        while true; do
+            sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds NATIVE $min_reputation_xah_requirement && break
+            confirm "\nDo you want to retry?\nPressing 'n' would terminate the opting-in." || exit 1
+        done
 
-        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds NATIVE $min_reputation_xah_requirement && echo "error retrieving funds" && exit 1
 
-        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN prepare && echo "error preparing account"  && exit 1
+        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN prepare && echo "error preparing account" && exit 1
 
         echomult "\n\nIn order to register in reputation and reward system you need to have $min_reputation_evr_requirement EVR balance in your host account. Please deposit the required registration fee in EVRs.
         \nYou can scan the provided QR code in your wallet app to send funds.\n\nWaiting for funds..."
-        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds ISSUED $min_reputation_evr_requirement && echo "error retrieving funds" && exit 1
+        
+        while true; do
+            sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds ISSUED $min_reputation_evr_requirement && break
+            confirm "\nDo you want to retry?\nPressing 'n' would terminate the opting-in." || exit 1
+        done
 
         # Setup env variable for the reputationd user.
         echo "
@@ -2096,12 +2100,12 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         done
         [ "$reputationd_user_systemd" != "running" ] && echo "NO_REPUTATIOND_USER_SYSTEMD" && abort
 
-        #configure reputationd service
+        # Configure reputationd service
         echomult "Configuring reputationd service"
-        ! (sudo -u $REPUTATIOND_USER mkdir -p "$reputationd_user_dir"/.config/systemd/user/) && echo "Message board user systemd folder creation failed" && abort
+        ! (sudo -u $REPUTATIOND_USER mkdir -p "$reputationd_user_dir"/.config/systemd/user/) && echo "ReputationD user systemd folder creation failed" && abort
         # StartLimitIntervalSec=0 to make unlimited retries. RestartSec=5 is to keep 5 second gap between restarts.
         echo "[Unit]
-            Description=Running evernode reputation and reward system.
+            Description=Running Evernode reputation for reward distribution.
             After=network.target
             StartLimitIntervalSec=0
             [Service]
@@ -2113,11 +2117,10 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
             RestartSec=5
             [Install]
             WantedBy=default.target" | sudo -u $REPUTATIOND_USER tee "$reputationd_user_dir"/.config/systemd/user/$REPUTATIOND_SERVICE.service >/dev/null
-        #
+
         # This service needs to be restarted whenever reputation.cfg or secret.cfg is changed.
         sudo -u "$REPUTATIOND_USER" XDG_RUNTIME_DIR="$reputationd_user_runtime_dir" systemctl --user enable $REPUTATIOND_SERVICE
         # We only enable this service. It'll be started after pending reboot checks at the bottom of this script.
-
 
         # If there's no pending reboot, start the reputationd services now. Otherwise
         # they'll get started at next startup.
@@ -2127,7 +2130,29 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
             sudo -u "$REPUTATIOND_USER" XDG_RUNTIME_DIR="$reputationd_user_runtime_dir" systemctl --user restart $REPUTATIOND_SERVICE
         fi
 
-        echo "Opted-in to the evernode reputation and reward system."
+        echo "Opted-in to the Evernode reputation for reward distribution."
+    }
+
+    function remove_reputationd() {
+        [ "$EUID" -ne 0 ] && echo "Please run with root privileges (sudo)." && exit 1
+
+        reputationd_user_dir=/home/"$REPUTATIOND_USER"
+        reputationd_user_id=$(id -u "$REPUTATIOND_USER")
+        reputationd_user_runtime_dir="/run/user/$reputationd_user_id"
+
+        # Remove auto updater service if exists.
+        local service_path="$reputationd_user_dir"/.config/systemd/user/$REPUTATIOND_SERVICE.service
+        if [ -f $service_path ]; then
+            echo "Removing Evernode reputation for reward distribution..."
+            sudo -u "$REPUTATIOND_USER" XDG_RUNTIME_DIR="$reputationd_user_runtime_dir" systemctl --user stop $REPUTATIOND_SERVICE
+            sudo -u "$REPUTATIOND_USER" XDG_RUNTIME_DIR="$reputationd_user_runtime_dir" systemctl --user disable $REPUTATIOND_SERVICE
+            rm -f $service_path
+            local service_removed=true
+        else
+            echo "Evernode reputation for reward distribution is not configured."
+        fi
+
+        $service_removed && echo "Opted-out from the Evernode reputation for reward distribution."
     }
 
     # Begin setup execution flow --------------------
@@ -2398,10 +2423,8 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
                 echo "Regular key is invalid." && exit 1
             fi
             set_regular_key $3
-            exit 0
         elif [ "$2" == "delete" ]; then
             set_regular_key
-            exit 0
         else
             echomult "Regular key management tool
             \nSupported commands:
@@ -2413,8 +2436,18 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         offerlease
 
     elif [ "$mode" == "reputationd" ]; then
-        init_setup_helpers
-        configure_reputationd_system
+        if [ "$2" == "opt-in" ]; then
+            init_setup_helpers
+            configure_reputationd
+        elif [ "$2" == "opt-out" ]; then
+            ! confirm "Are you sure you want to opt out from Evernode reputation for reward distribution?" "n" && exit 1
+            remove_reputationd
+        else
+            echomult "ReputationD management tool
+            \nSupported commands:
+            \nopt-in - Opt in to the Evernode reputation for reward distribution.
+            \ndelete - Opt out from the Evernode reputation for reward distribution." && exit 1
+        fi
     fi
 
     $installed && check_installer_pending_finish
