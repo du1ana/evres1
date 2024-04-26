@@ -1429,8 +1429,8 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
                 else
                     echomult "\nReputationD configuration successfull!!\n"
                 fi
-            else
-                #TODO
+            #else  #TODO
+            
             fi
         else
             if [ "$upgrade" == "0" ]; then
@@ -2035,7 +2035,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
     function configure_reputationd() {
         local upgrade=$1
-        
+
         [ "$EUID" -ne 0 ] && echo "Please run with root privileges (sudo)." && exit 1
 
         # Configure reputationd users and register host.
