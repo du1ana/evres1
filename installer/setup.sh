@@ -1482,7 +1482,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         local current_installer_script_version=$(cat $SASHIMONO_DATA/$installer_version_timestamp_file)
         [ "$latest_installer_script_version" == "$current_installer_script_version" ] && echo "Your $evernode installation is up to date." && exit 0
 
-        echo "New $evernode update available. Setup will re-install $evernode with updated software. Your account and contract instances will be preserved."
+        echo "New $evernode update available  v3.4.59. Setup will re-install $evernode with updated software. Your account and contract instances will be preserved."
         $interactive && ! confirm "\nDo you want to install the update?" && exit 1
 
         echo "Starting upgrade..."
@@ -2159,7 +2159,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
     if [ "$mode" == "install" ]; then
 
-        ! confirm "This will install Sashimono v3.4.58, Evernode's contract instance management software,
+        ! confirm "This will install Sashimono, Evernode's contract instance management software,
             and register your system as an $evernode host.
             \nMake sure your system does not currently contain any other workloads important
             to you since we will be making modifications to your system configuration.
