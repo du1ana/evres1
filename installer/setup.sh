@@ -2062,49 +2062,49 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         # NOTE : There can be user id mismatch, as we do not delete REPUTATIOND_USER's home in the uninstallation even though the user is removed.
         chown -R "$REPUTATIOND_USER":"$SASHIADMIN_GROUP" $reputationd_user_dir
 
-        echo -e "\nAccount setup is complete."
-
-        local message="Your host account with the address $reputationd_xrpl_address will be on Xahau $NETWORK.
-        \nThe secret key of the account is located at $reputationd_key_file_path.
-        \nNOTE: It is your responsibility to safeguard/backup this file in a secure manner.
-        \nIf you lose it, you will not be able to access any funds in your Host account. NO ONE else can recover it.
-        \n\nThis is the account that will represent this host on the Evernode host registry. You need to load up the account with following funds in order to continue with the installation."
-
-        local min_reputation_xah_requirement=$(echo "$MIN_REPUTATION_COST_PER_MONTH*$MIN_OPERATIONAL_DURATION + 1.2" | bc)
-        local lease_amount=$(jq ".xrpl.leaseAmount | select( . != null )" "$MB_XRPL_CONFIG")
-        local min_reputation_evr_requirement=$(echo "$lease_amount*24*30*$MIN_OPERATIONAL_DURATION" | bc)
-
-        local need_xah=$(echo "$min_reputation_xah_requirement > 0" | bc -l)
-        local need_evr=$(echo "$min_reputation_evr_requirement > 0" | bc -l)
-        [[ "$need_xah" -eq 1 ]] && message="$message\n(*) At least $min_reputation_xah_requirement XAH to cover regular transaction fees for the first three months."
-        [[ "$need_evr" -eq 1 ]] && message="$message\n(*) At least $min_reputation_evr_requirement EVR to cover Evernode registration."
-
-        message="$message\n\nYou can scan the following QR code in your wallet app to send funds based on the account condition:\n"
-
-        echomult "$message"
-
-        generate_qrcode "$reputationd_xrpl_address"
-
-        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN new $reputationd_xrpl_address $reputationd_key_file_path && echo "error creating configs" && exit 1
-
         if [ "$upgrade" == "0" ]; then
-        echomult "To set up your reputationd host account, ensure a deposit of $min_reputation_xah_requirement XAH to cover the regular transaction fees for the first three months."
-        echomult "\nChecking the reputationd account condition."
-            while true; do
-                wait_call "sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds NATIVE $min_reputation_xah_requirement" && break
-                confirm "\nDo you want to retry?\nPressing 'n' would terminate the opting-in." || return 1
-            done
+            echo -e "\nAccount setup is complete."
+
+            local message="Your host account with the address $reputationd_xrpl_address will be on Xahau $NETWORK.
+            \nThe secret key of the account is located at $reputationd_key_file_path.
+            \nNOTE: It is your responsibility to safeguard/backup this file in a secure manner.
+            \nIf you lose it, you will not be able to access any funds in your Host account. NO ONE else can recover it.
+            \n\nThis is the account that will represent this host on the Evernode host registry. You need to load up the account with following funds in order to continue with the installation."
+
+            local min_reputation_xah_requirement=$(echo "$MIN_REPUTATION_COST_PER_MONTH*$MIN_OPERATIONAL_DURATION + 1.2" | bc)
+            local lease_amount=$(jq ".xrpl.leaseAmount | select( . != null )" "$MB_XRPL_CONFIG")
+            local min_reputation_evr_requirement=$(echo "$lease_amount*24*30*$MIN_OPERATIONAL_DURATION" | bc)
+
+            local need_xah=$(echo "$min_reputation_xah_requirement > 0" | bc -l)
+            local need_evr=$(echo "$min_reputation_evr_requirement > 0" | bc -l)
+            [[ "$need_xah" -eq 1 ]] && message="$message\n(*) At least $min_reputation_xah_requirement XAH to cover regular transaction fees for the first three months."
+            [[ "$need_evr" -eq 1 ]] && message="$message\n(*) At least $min_reputation_evr_requirement EVR to cover Evernode registration."
+
+            message="$message\n\nYou can scan the following QR code in your wallet app to send funds based on the account condition:\n"
+
+            echomult "$message"
+
+            generate_qrcode "$reputationd_xrpl_address"
+            #new
+            ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN new $reputationd_xrpl_address $reputationd_key_file_path && echo "error creating configs" && exit 1
+
+            echomult "To set up your reputationd host account, ensure a deposit of $min_reputation_xah_requirement XAH to cover the regular transaction fees for the first three months."
+            echomult "\nChecking the reputationd account condition."
+                while true; do
+                    wait_call "sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds NATIVE $min_reputation_xah_requirement" && break
+                    confirm "\nDo you want to retry?\nPressing 'n' would terminate the opting-in." || return 1
+                done
         fi
         ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN prepare && echo "error preparing account" && exit 1
 
         if [ "$upgrade" == "0" ]; then
-        echomult "\n\nIn order to register in reputation and reward system you need to have $min_reputation_evr_requirement EVR balance in your host account. Please deposit the required registration fee in EVRs.
-        \nYou can scan the provided QR code in your wallet app to send funds."
+            echomult "\n\nIn order to register in reputation and reward system you need to have $min_reputation_evr_requirement EVR balance in your host account. Please deposit the required registration fee in EVRs.
+            \nYou can scan the provided QR code in your wallet app to send funds."
 
-            while true; do
-                wait_call "sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds ISSUED $min_reputation_evr_requirement" && break
-                confirm "\nDo you want to retry?\nPressing 'n' would terminate the opting-in." || return 1
-            done
+                while true; do
+                    wait_call "sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds ISSUED $min_reputation_evr_requirement" && break
+                    confirm "\nDo you want to retry?\nPressing 'n' would terminate the opting-in." || return 1
+                done
         fi
         # Setup env variable for the reputationd user.
         echo "
