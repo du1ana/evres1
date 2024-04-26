@@ -1187,7 +1187,6 @@
     }
 
     function prepare_host() {
-        echo "preparing host..."
         ([ -z $rippled_server ] || [ -z $xrpl_address ] || [ -z $key_file_path ] || [ -z $xrpl_secret ] || [ -z $inetaddr ]) && echo "No params specified." && return 1
 
         local inc_reserves_count=$((1 + 1 + $alloc_instcount))
