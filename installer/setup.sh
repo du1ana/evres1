@@ -1420,33 +1420,58 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
         # Write the verison timestamp to a file for later updated version comparison.
         echo $installer_version_timestamp >$SASHIMONO_DATA/$installer_version_timestamp_file
-        if sudo -u "$REPUTATIOND_USER" [ -f "/home/$REPUTATIOND_USER/.config/systemd/user/$REPUTATIOND_SERVICE.service" ]; then
-            #reputationd_enabled=true
-            if [ "$upgrade" == "1" ]; then
+        if [ "$upgrade" == "0" ]; then
+            if confirm "\nWould you like to opt-in to the Evernode reputation and reward system?"; then
+                if ! configure_reputationd 0; then 
+                    echomult "\nError occured configuring ReputationD!!\n You can retry opting-in by executing 'evernode reputationd' after installation.\n"
+                else
+                    echomult "\nReputationD configuration successfull!!\n"
+                fi
+            else
+                echomult "\nSkipped from opting-in Evernode reputation and reward system.\nYou can opt-in later by using 'evernode reputationd' command.\n"
+            fi
+        else [ "$upgrade" == "1" ]; then
+            if sudo -u "$REPUTATIOND_USER" [ -f "/home/$REPUTATIOND_USER/.config/systemd/user/$REPUTATIOND_SERVICE.service" ]; then
+                #reputationd_enabled=true
                 echo "Configuring Evernode reputation and reward system."
                 if ! configure_reputationd 1; then 
                     echomult "\nError occured configuring ReputationD!!\n You can retry opting-in by executing 'evernode reputationd' after installation.\n"
                 else
                     echomult "\nReputationD configuration successfull!!\n"
                 fi
-            #else  #TODO
-
-            fi
-        else
-            if [ "$upgrade" == "0" ]; then
-                if confirm "\nWould you like to opt-in to the Evernode reputation and reward system?"; then
-                    if ! configure_reputationd 0; then 
-                        echomult "\nError occured configuring ReputationD!!\n You can retry opting-in by executing 'evernode reputationd' after installation.\n"
-                    else
-                        echomult "\nReputationD configuration successfull!!\n"
-                    fi
-                else
-                    echomult "\nSkipped from opting-in Evernode reputation and reward system.\nYou can opt-in later by using 'evernode reputationd' command.\n"
-                fi
             else
                 echo "You are not opted-in to Evernode reputation and reward system."
             fi
         fi
+
+
+        # if sudo -u "$REPUTATIOND_USER" [ -f "/home/$REPUTATIOND_USER/.config/systemd/user/$REPUTATIOND_SERVICE.service" ]; then
+        #     #reputationd_enabled=true
+        #     if [ "$upgrade" == "1" ]; then
+        #         echo "Configuring Evernode reputation and reward system."
+        #         if ! configure_reputationd 1; then 
+        #             echomult "\nError occured configuring ReputationD!!\n You can retry opting-in by executing 'evernode reputationd' after installation.\n"
+        #         else
+        #             echomult "\nReputationD configuration successfull!!\n"
+        #         fi
+        #     else
+
+        #     fi
+        # else
+        #     if [ "$upgrade" == "0" ]; then
+        #         if confirm "\nWould you like to opt-in to the Evernode reputation and reward system?"; then
+        #             if ! configure_reputationd 0; then 
+        #                 echomult "\nError occured configuring ReputationD!!\n You can retry opting-in by executing 'evernode reputationd' after installation.\n"
+        #             else
+        #                 echomult "\nReputationD configuration successfull!!\n"
+        #             fi
+        #         else
+        #             echomult "\nSkipped from opting-in Evernode reputation and reward system.\nYou can opt-in later by using 'evernode reputationd' command.\n"
+        #         fi
+        #     else
+        #         echo "You are not opted-in to Evernode reputation and reward system."
+        #     fi
+        # fi
     }
 
     function check_exisiting_contracts() {
@@ -2035,7 +2060,6 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
     function configure_reputationd() {
         local upgrade=$1
-
         [ "$EUID" -ne 0 ] && echo "Please run with root privileges (sudo)." && exit 1
 
         # Configure reputationd users and register host.
@@ -2084,7 +2108,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
             echomult "$message"
 
             generate_qrcode "$reputationd_xrpl_address"
-            #new
+
             ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN new $reputationd_xrpl_address $reputationd_key_file_path && echo "error creating configs" && exit 1
 
             echomult "To set up your reputationd host account, ensure a deposit of $min_reputation_xah_requirement XAH to cover the regular transaction fees for the first three months."
@@ -2093,6 +2117,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
                     wait_call "sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds NATIVE $min_reputation_xah_requirement" && break
                     confirm "\nDo you want to retry?\nPressing 'n' would terminate the opting-in." || return 1
                 done
+
         fi
         ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN prepare && echo "error preparing account" && exit 1
 
@@ -2104,6 +2129,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
                     wait_call "sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds ISSUED $min_reputation_evr_requirement" && break
                     confirm "\nDo you want to retry?\nPressing 'n' would terminate the opting-in." || return 1
                 done
+
         fi
         # Setup env variable for the reputationd user.
         echo "
