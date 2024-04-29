@@ -1359,7 +1359,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         logfile="$log_dir/installer-$(date +%s).log"
 
         if [ "$upgrade" == "0" ]; then
-            echo "Installing other prerequisites..."
+            echo "Installing other prerequisites.."
             ! ./prereq.sh $cgrulesengd_service 2>&1 |
                 tee -a >(stdbuf --output=L awk '{ cmd="date -u +\"%Y-%m-%d %H:%M:%S\""; cmd | getline utc_time; close(cmd); print utc_time, $0 }' >>$logfile) | stdbuf --output=L grep -E 'STAGE' |
                 while read -r line; do
