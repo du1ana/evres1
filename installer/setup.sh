@@ -1360,7 +1360,6 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
         if [ "$upgrade" == "0" ]; then
             echo "Installing other prerequisites..."
-            echo "Installing other prerequisites..."
             ! ./prereq.sh $cgrulesengd_service 2>&1 |
                 tee -a >(stdbuf --output=L awk '{ cmd="date -u +\"%Y-%m-%d %H:%M:%S\""; cmd | getline utc_time; close(cmd); print utc_time, $0 }' >>$logfile) | stdbuf --output=L grep -E 'STAGE' |
                 while read -r line; do
@@ -1445,35 +1444,6 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
                 echo "You are not opted-in to Evernode reputation and reward system."
             fi
         fi
-
-
-        # if sudo -u "$REPUTATIOND_USER" [ -f "/home/$REPUTATIOND_USER/.config/systemd/user/$REPUTATIOND_SERVICE.service" ]; then
-        #     #reputationd_enabled=true
-        #     if [ "$upgrade" == "1" ]; then
-        #         echo "Configuring Evernode reputation and reward system."
-        #         if ! configure_reputationd 1; then 
-        #             echomult "\nError occured configuring ReputationD!!\n You can retry opting-in by executing 'evernode reputationd' after installation.\n"
-        #         else
-        #             echomult "\nReputationD configuration successfull!!\n"
-        #         fi
-        #     else
-
-        #     fi
-        # else
-        #     if [ "$upgrade" == "0" ]; then
-        #         if confirm "\nWould you like to opt-in to the Evernode reputation and reward system?"; then
-        #             if ! configure_reputationd 0; then 
-        #                 echomult "\nError occured configuring ReputationD!!\n You can retry opting-in by executing 'evernode reputationd' after installation.\n"
-        #             else
-        #                 echomult "\nReputationD configuration successfull!!\n"
-        #             fi
-        #         else
-        #             echomult "\nSkipped from opting-in Evernode reputation and reward system.\nYou can opt-in later by using 'evernode reputationd' command.\n"
-        #         fi
-        #     else
-        #         echo "You are not opted-in to Evernode reputation and reward system."
-        #     fi
-        # fi
     }
 
     function check_exisiting_contracts() {
@@ -2068,7 +2038,8 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         echomult "configuring Evernode reputation for reward distribution..."
 
         if [ -f "$REPUTATIOND_CONFIG" ]; then
-            reputationd_secret_path=$(jq -r '.reputation.secretPath' "$REPUTATIOND_CONFIG")
+            echo "$REPUTATIOND_CONFIG"
+            reputationd_secret_path=$(jq -r '.xrpl.secretPath' "$REPUTATIOND_CONFIG")
             chown "$REPUTATIOND_USER": $reputationd_secret_path
         fi
         if [ "$upgrade" == "0" ]; then
