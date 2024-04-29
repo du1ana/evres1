@@ -1430,7 +1430,8 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
             else
                 echomult "\nSkipped from opting-in Evernode reputation and reward system.\nYou can opt-in later by using 'evernode reputationd' command.\n"
             fi
-        else [ "$upgrade" == "1" ]; then
+        else
+            #[ "$upgrade" == "1" ]
             if sudo -u "$REPUTATIOND_USER" [ -f "/home/$REPUTATIOND_USER/.config/systemd/user/$REPUTATIOND_SERVICE.service" ]; then
                 #reputationd_enabled=true
                 echo "Configuring Evernode reputation and reward system."
