@@ -85,7 +85,7 @@
     export MB_XRPL_DATA=$SASHIMONO_DATA/mb-xrpl
     export REPUTATIOND_DATA=$SASHIMONO_DATA/reputationd
     export MB_XRPL_CONFIG="$MB_XRPL_DATA/mb-xrpl.cfg"
-    export REPUTATIOND_CONFIG="$REPUTATIOND_DATA/reputation.cfg"
+    export REPUTATIOND_CONFIG="$REPUTATIOND_DATA/reputationd.cfg"
     export SASHIMONO_SERVICE="sashimono-agent"
     export CGCREATE_SERVICE="sashimono-cgcreate"
     export MB_XRPL_SERVICE="sashimono-mb-xrpl"
@@ -2463,7 +2463,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
     elif [ "$mode" == "reputationd" ]; then
         if [ "$2" == "opt-in" ]; then
             init_setup_helpers
-            configure_reputationd 0|| echomult "\nError occured configuring ReputationD."
+            configure_reputationd 0 || echomult "\nError occured configuring ReputationD."
         elif [ "$2" == "opt-out" ]; then
             ! confirm "Are you sure you want to opt out from Evernode reputation for reward distribution?" "n" && exit 1
             remove_reputationd
