@@ -28,12 +28,8 @@
     root_user="root"
 
     repo_owner="du1ana"
-    repo_name="evres1"
+    repo_name="evres"
     desired_branch="main"
-
-    # repo_owner="EvernodeXRPL"
-    # repo_name="evernode-test-resources"
-    # desired_branch="main"
 
     latest_version_endpoint="https://api.github.com/repos/$repo_owner/$repo_name/releases/latest"
     latest_version_data=$(curl -s "$latest_version_endpoint")
@@ -50,6 +46,7 @@
     resource_storage="https://github.com/$repo_owner/$repo_name/releases/download/$latest_version"
     licence_url="https://raw.githubusercontent.com/$repo_owner/$repo_name/$desired_branch/license/evernode-license.pdf"
     config_url="https://raw.githubusercontent.com/$repo_owner/$repo_name/$desired_branch/definitions/definitions.json"
+    reputation_contract_url="https://raw.githubusercontent.com/$repo_owner/$repo_name/$desired_branch/sashimono/installer/reputation-contract.tar.gz"
     setup_script_url="$resource_storage/setup.sh"
     installer_url="$resource_storage/installer.tar.gz"
     jshelper_url="$resource_storage/setup-jshelper.tar.gz"
@@ -100,9 +97,8 @@
     export MIN_OPERATIONAL_COST_PER_MONTH=5
     # 3 Month minimum operational duration is considered.
     export MIN_OPERATIONAL_DURATION=3
-    export MIN_REPUTATION_COST_PER_MONTH=7
+    export MIN_REPUTATION_COST_PER_MONTH=10
 
-    #export NETWORK="${NETWORK:-mainnet}"
     export NETWORK="${NETWORK:-devnet}"
 
     # Private docker registry (not used for now)
@@ -739,24 +735,30 @@
             ! [[ $alloc_instcount -gt 0 ]] && echo "Invalid instance count." || break
         done
 
+        local max_ram_mb=$((ramKB / 1000))
         while true; do
             read -ep "Specify the total memory in megabytes to distribute among all contract instances: " ramMB </dev/tty
             ! [[ $ramMB -gt 0 ]] && echo "Invalid memory size." && continue
-            [[ $ramMB -lt $min_ram_mb ]] && echo "Minimum memory size shoule be "$min_ram_mb" MB." && continue
+            [[ $ramMB -lt $min_ram_mb ]] && echo "Minimum memory size should be "$min_ram_mb" MB." && continue
+            [[ $ramMB -gt $max_ram_mb ]] && echo "Insufficient memory on your host. Maximum available memory is "$max_ram_mb" MB." && continue
             break
         done
 
+        local max_swap_mb=$((swapKB / 1000))
         while true; do
             read -ep "Specify the total Swap in megabytes to distribute among all contract instances: " swapMB </dev/tty
             ! [[ $swapMB -gt 0 ]] && echo "Invalid swap size." && continue
-            [[ $swapMB -lt $min_swap_mb ]] && echo "Minimum swap size shoule be "$min_swap_mb" MB." && continue
+            [[ $swapMB -lt $min_swap_mb ]] && echo "Minimum swap size should be "$min_swap_mb" MB." && continue
+            [[ $swapMB -gt $max_swap_mb ]] && echo "Insufficient swap on your host. Maximum available swap is "$max_swap_mb" MB." && continue
             break
         done
 
+        local max_disk_mb=$((diskKB / 1000))
         while true; do
             read -ep "Specify the total disk space in megabytes to distribute among all contract instances: " diskMB </dev/tty
             ! [[ $diskMB -gt 0 ]] && echo "Invalid disk size." && continue
-            [[ $diskMB -lt $min_disk_mb ]] && echo "Minimum disk size shoule be "$min_disk_mb" MB." && continue
+            [[ $diskMB -lt $min_disk_mb ]] && echo "Minimum disk size should be "$min_disk_mb" MB." && continue
+            [[ $diskMB -gt $max_disk_mb ]] && echo "Insufficient disk on your host. Maximum available disk is "$max_disk_mb" MB." && continue
             break
         done
 
@@ -1231,6 +1233,9 @@
                     break
                 confirm "\nDo you want to re-check the balance?\nPressing 'n' would terminate the installation." || exit 1
             done
+
+            # Adding 2 second sleep to avoid account not found.
+            sleep 2
         fi
 
         echomult "\nPreparing host account..."
@@ -1422,7 +1427,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         echo $installer_version_timestamp >$SASHIMONO_DATA/$installer_version_timestamp_file
         if [ "$upgrade" == "0" ]; then
             if confirm "\nWould you like to opt-in to the Evernode reputation and reward system?"; then
-                if ! configure_reputationd 0; then 
+                if ! configure_reputationd 0; then
                     echomult "\nError occured configuring ReputationD!!\n You can retry opting-in by executing 'evernode reputationd' after installation.\n"
                 else
                     echomult "\nReputationD configuration successfull!!\n"
@@ -1435,7 +1440,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
             if sudo -u "$REPUTATIOND_USER" [ -f "/home/$REPUTATIOND_USER/.config/systemd/user/$REPUTATIOND_SERVICE.service" ]; then
                 #reputationd_enabled=true
                 echo "Configuring Evernode reputation and reward system."
-                if ! configure_reputationd 1; then 
+                if ! configure_reputationd 1; then
                     echomult "\nError occured configuring ReputationD!!\n You can retry opting-in by executing 'evernode reputationd' after installation.\n"
                 else
                     echomult "\nReputationD configuration successfull!!\n"
@@ -1580,6 +1585,21 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         fi
     }
 
+    function reputationd_info() {
+        if sudo -u "$REPUTATIOND_USER" [ -f "/home/$REPUTATIOND_USER/.config/systemd/user/$REPUTATIOND_SERVICE.service" ]; then
+            reputationd_enabled=true
+        else
+            reputationd_enabled=false
+        fi
+        local reputationd_user_id=$(id -u "$REPUTATIOND_USER")
+        local reputationd_user_runtime_dir="/run/user/$reputationd_user_id"
+        local evernode_reputationd_status=$(sudo -u "$REPUTATIOND_USER" XDG_RUNTIME_DIR="$reputationd_user_runtime_dir" systemctl --user is-active $REPUTATIOND_SERVICE)
+        echo "Evernode reputationd status: $evernode_reputationd_status"
+        if [[ $reputationd_enabled == true ]]; then
+            echo -e "\nYour reputationd account details are stored in $REPUTATIOND_DATA/reputationd.cfg"
+        fi
+    }
+
     function reg_info() {
         local reg_info=$(MB_DATA_DIR=$MB_XRPL_DATA node $MB_XRPL_BIN reginfo || echo ERROR)
         local error=$(echo "$reg_info" | tail -1)
@@ -1604,18 +1624,8 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         echo "Sashimono message board status: $sashimono_mb_xrpl_status"
         echo -e "\nYour registration account details are stored in $MB_XRPL_DATA/mb-xrpl.cfg"
         echo ""
-        if sudo -u "$REPUTATIOND_USER" [ -f "/home/$REPUTATIOND_USER/.config/systemd/user/$REPUTATIOND_SERVICE.service" ]; then
-            reputationd_enabled=true
-        else
-            reputationd_enabled=false
-        fi
-        local reputationd_user_id=$(id -u "$REPUTATIOND_USER")
-        local reputationd_user_runtime_dir="/run/user/$reputationd_user_id"
-        local evernode_reputationd_status=$(sudo -u "$REPUTATIOND_USER" XDG_RUNTIME_DIR="$reputationd_user_runtime_dir" systemctl --user is-active $REPUTATIOND_SERVICE)
-        echo "Evernode reputationd status: $evernode_reputationd_status"
-        if [[ $reputationd_enabled == true ]]; then
-            echo -e "\nYour reputationd account details are stored in $REPUTATIOND_DATA/reputation.cfg"
-        fi
+
+        reputationd_info
     }
 
     function get_country_code() {
@@ -1769,12 +1779,31 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
                 \n Instance count: $max_instance_count\n" && exit 0
 
             local help_text="Usage: evernode config resources | evernode config resources <memory MB> <swap MB> <disk MB> <max instance count>\n"
-            [ ! -z $ramMB ] && [[ $ramMB != 0 ]] && (! validate_positive_decimal $ramMB || [[ $ramMB -lt $min_ram_mb ]]) &&
-                echomult "Invalid memory size $([[ $min_ram_mb != 0 ]] && echo "(Minimum should be "$min_ram_mb" MB)" || echo "").\n   $help_text" && exit 1
-            [ ! -z $swapMB ] && [[ $swapMB != 0 ]] && (! validate_positive_decimal $swapMB || [[ $swapMB -lt $min_swap_mb ]]) &&
-                echomult "Invalid swap size $([[ $min_swap_mb != 0 ]] && echo "(Minimum should be "$min_swap_mb" MB)" || echo "").\n   $help_text" && exit 1
-            [ ! -z $diskMB ] && [[ $diskMB != 0 ]] && (! validate_positive_decimal $diskMB || [[ $diskMB -lt $min_disk_mb ]]) &&
-                echomult "Invalid disk size $([[ $min_disk_mb != 0 ]] && echo "(Minimum should be "$min_disk_mb" MB)" || echo "").\n   $help_text" && exit 1
+            if ([ ! -z $ramMB ] && [[ $ramMB != 0 ]]); then
+                local ramKB=$(free | grep Mem | awk '{print $2}')
+                local max_ram_mb=$((ramKB / 1000))
+                ! validate_positive_decimal $ramMB && echomult "Invalid memory size.\n $help_text" && exit 1
+                [[ $ramMB -lt $min_ram_mb ]] &&
+                    echomult "Minimum memory size should be "$min_ram_mb" MB.\n" && exit 1
+                [[ $ramMB -gt $max_ram_mb ]] && echomult "Insufficient memory on your host. Maximum available memory is "$max_ram_mb" MB.\n" && exit 1
+            fi
+            if ([ ! -z $swapMB ] && [[ $swapMB != 0 ]]); then
+                local swapKB=$(free | grep -i Swap | awk '{print $2}')
+                local max_swap_mb=$((swapKB / 1000))
+                ! validate_positive_decimal $swapMB && echomult "Invalid swap size.\n $help_text" && exit 1
+                [[ $swapMB -lt $min_swap_mb ]] &&
+                    echomult "Minimum swap size should be "$min_swap_mb" MB.\n " && exit 1
+                [[ $swapMB -gt $max_swap_mb ]] && echomult "Insufficient swap on your host. Maximum available swap is "$max_swap_mb" MB.\n" && exit 1
+            fi
+            if ([ ! -z $diskMB ] && [[ $diskMB != 0 ]]); then
+                local diskKB=$(df | grep -w /home | head -1 | awk '{print $4}')
+                [ -z "$diskKB" ] && local diskKB=$(df | grep -w / | head -1 | awk '{print $4}')
+                local max_disk_mb=$((diskKB / 1000))
+                ! validate_positive_decimal $diskMB && echomult "Invalid disk size.\n $help_text" && exit 1
+                [[ $diskMB -lt $min_disk_mb ]] &&
+                    echomult "Minimum disk size should be "$min_disk_mb" MB.\n" && exit 1
+                [[ $diskMB -gt $max_disk_mb ]] && echomult "Insufficient disk on your host. Maximum available disk is "$max_disk_mb" MB.\n" && exit 1
+            fi
             [ ! -z $instcount ] && [[ $instcount != 0 ]] && ! validate_positive_decimal $instcount &&
                 echomult "Invalid instance count.\n   $help_text" && exit 1
 
@@ -2032,7 +2061,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
     function configure_reputationd() {
         local upgrade=$1
-        [ "$EUID" -ne 0 ] && echo "Please run with root privileges (sudo)." && exit 1
+        [ "$EUID" -ne 0 ] && echo "Please run with root privileges (sudo)." && return 1
 
         # Configure reputationd users and register host.
         echomult "configuring Evernode reputation for reward distribution..."
@@ -2057,6 +2086,12 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         # NOTE : There can be user id mismatch, as we do not delete REPUTATIOND_USER's home in the uninstallation even though the user is removed.
         chown -R "$REPUTATIOND_USER":"$SASHIADMIN_GROUP" $reputationd_user_dir
 
+        # Setting group ownership for the host secret.
+        local host_key_file_path=$(jq -r ".xrpl.secretPath | select( . != null )" "$MB_XRPL_CONFIG")
+        local host_key_parent_directory=$(dirname "$host_key_file_path")
+        [ $(stat -c "%a" "$host_key_parent_directory") != "550" ] && chmod -R 550 "$host_key_parent_directory"
+        [ $(stat -c "%a" "$host_key_file_path") != "440" ] && chmod 440 "$host_key_file_path"
+
         if [ "$upgrade" == "0" ]; then
             echo -e "\nAccount setup is complete."
 
@@ -2068,6 +2103,8 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
             local min_reputation_xah_requirement=$(echo "$MIN_REPUTATION_COST_PER_MONTH*$MIN_OPERATIONAL_DURATION + 1.2" | bc)
             local lease_amount=$(jq ".xrpl.leaseAmount | select( . != null )" "$MB_XRPL_CONFIG")
+            # Format lease amount since jq gives it in exponential format.
+            local lease_amount=$(awk -v lease_amount="$lease_amount" 'BEGIN { printf("%f\n", lease_amount) }' </dev/null)
             local min_reputation_evr_requirement=$(echo "$lease_amount*24*30*$MIN_OPERATIONAL_DURATION" | bc)
 
             local need_xah=$(echo "$min_reputation_xah_requirement > 0" | bc -l)
@@ -2081,28 +2118,36 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
 
             generate_qrcode "$reputationd_xrpl_address"
 
-            ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN new $reputationd_xrpl_address $reputationd_key_file_path && echo "error creating configs" && exit 1
+            ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN new $reputationd_xrpl_address $reputationd_key_file_path && echo "Error creating configs" && return 1
 
             echomult "To set up your reputationd host account, ensure a deposit of $min_reputation_xah_requirement XAH to cover the regular transaction fees for the first three months."
             echomult "\nChecking the reputationd account condition."
-                while true; do
-                    wait_call "sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds NATIVE $min_reputation_xah_requirement" && break
-                    confirm "\nDo you want to retry?\nPressing 'n' would terminate the opting-in." || return 1
-                done
+            while true; do
+                wait_call "sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds NATIVE $min_reputation_xah_requirement" && break
+                confirm "\nDo you want to retry?\nPressing 'n' would terminate the opting-in." || return 1
+            done
 
+            sleep 2
         fi
-        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN prepare && echo "error preparing account" && exit 1
+        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN prepare && echo "Error preparing account" && return 1
 
         if [ "$upgrade" == "0" ]; then
-            echomult "\n\nIn order to register in reputation and reward system you need to have $min_reputation_evr_requirement EVR balance in your host account. Please deposit the required registration fee in EVRs.
+            echomult "\n\nIn order to register in reputation and reward system you need to have $min_reputation_evr_requirement EVR balance in your host account. Please deposit the required amount in EVRs.
             \nYou can scan the provided QR code in your wallet app to send funds."
 
-                while true; do
-                    wait_call "sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds ISSUED $min_reputation_evr_requirement" && break
-                    confirm "\nDo you want to retry?\nPressing 'n' would terminate the opting-in." || return 1
-                done
+            while true; do
+                wait_call "sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN wait-for-funds ISSUED $min_reputation_evr_requirement" && break
+                confirm "\nDo you want to retry?\nPressing 'n' would terminate the opting-in." || return 1
+            done
 
         fi
+
+        if [ "$upgrade" == "1" ]; then
+            ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN upgrade && echo "Error upgrading reputationd" && return 1
+        fi
+
+        ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN update-config $reputation_contract_url && echo "Error configuring reputation contract URL." && return 1
+
         # Setup env variable for the reputationd user.
         echo "
             export XDG_RUNTIME_DIR=$reputationd_user_runtime_dir" >>"$reputationd_user_dir"/.bashrc
@@ -2134,7 +2179,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
             [Install]
             WantedBy=default.target" | sudo -u $REPUTATIOND_USER tee "$reputationd_user_dir"/.config/systemd/user/$REPUTATIOND_SERVICE.service >/dev/null
 
-        # This service needs to be restarted whenever reputation.cfg or secret.cfg is changed.
+        # This service needs to be restarted whenever reputationd.cfg or secret.cfg is changed.
         sudo -u "$REPUTATIOND_USER" XDG_RUNTIME_DIR="$reputationd_user_runtime_dir" systemctl --user enable $REPUTATIOND_SERVICE
         # We only enable this service. It'll be started after pending reboot checks at the bottom of this script.
 
@@ -2150,7 +2195,7 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
     }
 
     function remove_reputationd() {
-        [ "$EUID" -ne 0 ] && echo "Please run with root privileges (sudo)." && exit 1
+        [ "$EUID" -ne 0 ] && echo "Please run with root privileges (sudo)." && return 1
 
         reputationd_user_dir=/home/"$REPUTATIOND_USER"
         reputationd_user_id=$(id -u "$REPUTATIOND_USER")
@@ -2405,9 +2450,9 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
         update_evernode
 
         echomult "Upgrade complete!
-            \n\nNOTE: This update includes following commands for you to configure extra transaction fee and fallback xahaud servers.
-            \n evernode config extrafee <fee amount in XAH Drops> - Configure extra transaction fee.
-            \n evernode config xahaud-fallback <fallback xahaud servers (comma seperated)> - Configure fallback xahaud servers."
+            \n\nNOTE: This update includes following commands for you to configure reputation for reward distribution.
+            \n evernode reputationd <opt-in|opt-out> - Opt-in or opt-out for Evernode reputation for reward distribution.
+            \n evernode reputationd status - Check the status of Evernode reputation for reward distribution."
 
     elif [ "$mode" == "log" ]; then
         create_log
@@ -2461,15 +2506,27 @@ WantedBy=timers.target" >/etc/systemd/system/$EVERNODE_AUTO_UPDATE_SERVICE.timer
     elif [ "$mode" == "reputationd" ]; then
         if [ "$2" == "opt-in" ]; then
             init_setup_helpers
-            configure_reputationd 0 || echomult "\nError occured configuring ReputationD."
+            if ! configure_reputationd 0; then
+                echomult "\nError occured configuring ReputationD. Retry with the same command again."
+                exit 1
+            fi
         elif [ "$2" == "opt-out" ]; then
             ! confirm "Are you sure you want to opt out from Evernode reputation for reward distribution?" "n" && exit 1
-            remove_reputationd
+            if ! remove_reputationd; then
+                echomult "\nError occured removing ReputationD. Retry with the same command again."
+                exit 1
+            fi
+        elif [ "$2" == "status" ]; then
+            echo ""
+            reputationd_info
+            echo ""
+            ! sudo -u $REPUTATIOND_USER REPUTATIOND_DATA_DIR=$REPUTATIOND_DATA node $REPUTATIOND_BIN repinfo && echo "Error getting reputation status" && exit 1
         else
             echomult "ReputationD management tool
             \nSupported commands:
             \nopt-in - Opt in to the Evernode reputation for reward distribution.
-            \ndelete - Opt out from the Evernode reputation for reward distribution." && exit 1
+            \nopt-out - Opt out from the Evernode reputation for reward distribution.
+            \nstatus - Check the status of Evernode reputation for reward distribution." && exit 1
         fi
     fi
 
