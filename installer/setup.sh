@@ -28,7 +28,7 @@
     root_user="root"
 
     repo_owner="du1ana"
-    repo_name="evres"
+    repo_name="evres1"
     desired_branch="main"
 
     latest_version_endpoint="https://api.github.com/repos/$repo_owner/$repo_name/releases/latest"
