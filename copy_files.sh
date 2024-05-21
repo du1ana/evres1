@@ -7,6 +7,7 @@ file_paths=(
     "/home/dulana/EvernodeXRPL/sashimono/build/installer.tar.gz /home/dulana/du1ana repos/evres1/installer/installer.tar.gz"
     "/home/dulana/EvernodeXRPL/sashimono/build/setup-jshelper.tar.gz /home/dulana/du1ana repos/evres1/installer/setup-jshelper.tar.gz"
     "/home/dulana/EvernodeXRPL/sashimono/installer/setup.sh /home/dulana/du1ana repos/evres1/installer/setup.sh"
+    "/home/dulana/EvernodeXRPL/sashimono/build/reputation-contract.tar.gz /home/dulana/du1ana repos/evres1/installer/reputation-contract.tar.gz"
 )
 
 cd "/home/kavindu/Documents/Evernode/sashimono/sashimono" &&  make -j8 && make installer -j8
