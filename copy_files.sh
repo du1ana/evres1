@@ -3,13 +3,13 @@
 
 # Define an array of source and destination file paths
 file_paths=(
-    "/home/dulana/EvernodeXRPL/sashimono/build/installer.tar.gz /home/dulana/du1ana repos/evres1/installer/installer.tar.gz"
-    "/home/dulana/EvernodeXRPL/sashimono/build/setup-jshelper.tar.gz /home/dulana/du1ana repos/evres1/installer/setup-jshelper.tar.gz"
-    "/home/dulana/EvernodeXRPL/sashimono/installer/setup.sh /home/dulana/du1ana repos/evres1/installer/setup.sh"
-    "/home/dulana/EvernodeXRPL/sashimono/build/reputation-contract.tar.gz /home/dulana/du1ana repos/evres1/installer/reputation-contract.tar.gz"
+    "/home/kavindu/Documents/Evernode/sashimono/sashimono/build/installer.tar.gz /home/kavindu/Documents/Evernode/release/evres1/installer/installer.tar.gz"
+    "/home/kavindu/Documents/Evernode/sashimono/sashimono/build/setup-jshelper.tar.gz /home/kavindu/Documents/Evernode/release/evres1/installer/setup-jshelper.tar.gz"
+    "/home/kavindu/Documents/Evernode/sashimono/sashimono/installer/setup.sh /home/kavindu/Documents/Evernode/release/evres1/installer/setup.sh"
+    "/home/kavindu/Documents/Evernode/sashimono/sashimono/build/reputation-contract.tar.gz /home/kavindu/Documents/Evernode/release/evres1/installer/reputation-contract.tar.gz"
 )
 
-cd "/home/dulana/EvernodeXRPL/sashimono/" &&  make -j8 && make installer -j8
+cd "/home/kavindu/Documents/Evernode/sashimono/sashimono/" &&  make -j8 && make installer -j8
 
 # Loop through each pair and perform the copy and replace operation
 for path_pair in "${file_paths[@]}"; do
