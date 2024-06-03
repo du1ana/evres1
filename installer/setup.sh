@@ -27,6 +27,10 @@
     reputationd_script_dir=$(dirname "$(realpath "$0")")
     root_user="root"
 
+    repo_owner="du1ana"
+    repo_name="evres1"
+    desired_branch="main"
+
     # repo_owner="EvernodeXRPL"
     # repo_name="evernode-resources"
     # desired_branch="main"
