@@ -74,4 +74,3 @@ else
     echo "Update failed after $max_retries attempts."
     exit 1
 fi
-
