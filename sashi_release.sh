@@ -9,7 +9,7 @@ tag_version="sashi_$1"
 target_branch="$2"
 release_note="$3"
 
-./copy_files.sh
+#./copy_files.sh
 git add .
 git commit -m "$tag_version $release_note"
 git push origin main
