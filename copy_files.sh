@@ -1,15 +1,21 @@
 #curl -fsSL https://github.com/du1ana/evres1/releases/download/sashi_v3.5.13/setup.sh | cat | sudo SKIP_SYSREQ=1 NO_DOMAIN=1 NETWORK=devnet bash -s install
 #!/bin/bash
 
-# Define an array of source and destination file paths
+# Get the current script directory to use relative paths
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Define an array of source and destination file paths (using current directory)
 file_paths=(
-    "/home/dulana/EvernodeXRPL/sashimono/build/installer.tar.gz /home/kavindu/Documents/Evernode/release/evres1/installer/installer.tar.gz"
-    "/home/dulana/EvernodeXRPL/sashimono/build/setup-jshelper.tar.gz /home/kavindu/Documents/Evernode/release/evres1/installer/setup-jshelper.tar.gz"
-    "/home/dulana/EvernodeXRPL/sashimono/installer/setup.sh /home/kavindu/Documents/Evernode/release/evres1/installer/setup.sh"
-    "/home/dulana/EvernodeXRPL/sashimono/build/reputation-contract.tar.gz /home/kavindu/Documents/Evernode/release/evres1/installer/reputation-contract.tar.gz"
+    "/home/dulana/EvernodeXRPL/sashimono/build/installer.tar.gz $SCRIPT_DIR/installer/installer.tar.gz"
+    "/home/dulana/EvernodeXRPL/sashimono/build/setup-jshelper.tar.gz $SCRIPT_DIR/installer/setup-jshelper.tar.gz"
+    "/home/dulana/EvernodeXRPL/sashimono/installer/setup.sh $SCRIPT_DIR/installer/setup.sh"
+    "/home/dulana/EvernodeXRPL/sashimono/build/reputation-contract.tar.gz $SCRIPT_DIR/installer/reputation-contract.tar.gz"
 )
 
 cd "/home/dulana/EvernodeXRPL/sashimono" &&  make -j8 && make installer -j8
+
+# Ensure the installer directory exists
+mkdir -p "$SCRIPT_DIR/installer"
 
 # Loop through each pair and perform the copy and replace operation
 for path_pair in "${file_paths[@]}"; do
@@ -26,8 +32,9 @@ for path_pair in "${file_paths[@]}"; do
             echo "File copied successfully from $source_filepath to $destination_filepath"
         else
             echo "Error: Failed to copy the file from $source_filepath to $destination_filepath"
+            exit 1
         fi
     else
-        echo "Error: Source file $source_filepath does not exist"
+        echo "Warning: Source file $source_filepath does not exist - skipping"
     fi
 done
