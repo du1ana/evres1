@@ -1,20 +1,29 @@
 {
     "testnet": {
-        "governorAddress": "rGVHr1PrfL93UAjyw3DWZoi9adz2sLp2yL",
+        "governorAddress": "rUZXZuqhjRP2ouHTmBncp2pmntt2WmNo9c",
         "rippledServer": "wss://hooks-testnet-v3.xrpl-labs.com",
         "stateIndexId": "evernodeindex",
-        "networkID": 21338
+        "networkID": 21338,
+        "minVersions": {
+            "reputationD": "0.11.0"
+        }
     },
     "devnet": {
         "governorAddress": "rwBigRmbdi4CwtdS9yV9f7YqaZbzVbnvrt",
         "rippledServer": "wss://hooks-testnet-v3.xrpl-labs.com",
         "stateIndexId": "evernodev3devindex",
-        "networkID": 21338
+        "networkID": 21338,
+        "minVersions": {
+            "reputationD": "0.12.0"
+        }
     },
     "mainnet": {
-        "governorAddress": "",
+        "governorAddress": "rBvKgF3jSZWdJcwSsmoJspoXLLDVLDp6jg",
         "rippledServer": "wss://xahau.network",
-        "stateIndexId": "evernodev3devindex",
-        "networkID": 21337
+        "stateIndexId": "evernodeprod",
+        "networkID": 21337,
+        "minVersions": {
+            "reputationD": "0.11.0"
+        }
     }
 }
