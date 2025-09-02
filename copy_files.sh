@@ -6,13 +6,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Define an array of source and destination file paths (using current directory)
 file_paths=(
-    "/home/dulana/EvernodeXRPL/sashimono/build/installer.tar.gz $SCRIPT_DIR/installer/installer.tar.gz"
-    "/home/dulana/EvernodeXRPL/sashimono/build/setup-jshelper.tar.gz $SCRIPT_DIR/installer/setup-jshelper.tar.gz"
-    "/home/dulana/EvernodeXRPL/sashimono/installer/setup.sh $SCRIPT_DIR/installer/setup.sh"
-    "/home/dulana/EvernodeXRPL/sashimono/build/reputation-contract.tar.gz $SCRIPT_DIR/installer/reputation-contract.tar.gz"
+    "/home/dulana/du1ana_repos/sashimono/build/installer.tar.gz $SCRIPT_DIR/installer/installer.tar.gz"
+    "/home/dulana/du1ana_repos/sashimono/build/setup-jshelper.tar.gz $SCRIPT_DIR/installer/setup-jshelper.tar.gz"
+    "/home/dulana/du1ana_repos/sashimono/installer/setup.sh $SCRIPT_DIR/installer/setup.sh"
 )
 
-cd "/home/dulana/EvernodeXRPL/sashimono" &&  make -j8 && make installer -j8
+cd "/home/dulana/du1ana_repos/sashimono" &&  make -j8 && make installer -j8
 
 # Ensure the installer directory exists
 mkdir -p "$SCRIPT_DIR/installer"
